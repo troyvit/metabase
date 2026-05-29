@@ -1760,3 +1760,29 @@
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"
     (mt/user-http-request :crowberto :post 404
                           "user/999999/password-reset-url")))
+
+(deftest hide-tenant-users-when-tenants-disabled-test
+  (testing "Tenant users are hidden from /api/user endpoints when the Tenants feature is disabled"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/Tenant {tenant-id :id}      {:name "Test Tenant"}
+                     :model/User   {tenant-user-id :id} {:tenant_id  tenant-id
+                                                         :email      "tenant-hide@example.com"
+                                                         :first_name "Tenant"
+                                                         :last_name  "Hide"}]
+        (mt/with-temporary-setting-values [use-tenants true]
+          (testing "GET /api/user/:id returns the tenant user when on"
+            (is (=? {:id tenant-user-id}
+                    (mt/user-http-request :crowberto :get 200 (format "user/%d" tenant-user-id)))))
+          (testing "GET /api/user (tenancy=external) includes tenant user when on"
+            (is (some #(= tenant-user-id (:id %))
+                      (:data (mt/user-http-request :crowberto :get 200 "user" :tenancy "external"))))))
+        (mt/with-temporary-setting-values [use-tenants false]
+          (testing "GET /api/user/:id returns 404 for a tenant user when off"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :get 404 (format "user/%d" tenant-user-id)))))
+          (testing "GET /api/user (tenancy=external) is empty when off"
+            (is (not-any? #(= tenant-user-id (:id %))
+                          (:data (mt/user-http-request :crowberto :get 200 "user" :tenancy "external")))))
+          (testing "GET /api/user/recipients excludes tenant users when off"
+            (is (not-any? #(= tenant-user-id (:id %))
+                          (:data (mt/user-http-request :crowberto :get 200 "user/recipients"))))))))))

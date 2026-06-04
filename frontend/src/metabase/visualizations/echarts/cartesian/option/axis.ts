@@ -173,6 +173,9 @@ const getCommonDimensionAxisOptions = (
     ),
     mainType: "xAxis" as const,
     nameMoveOverlap: false,
+    // echarts 6.1.0's `containShape` (default true) reserves ~half a band at each
+    // axis end, compressing bar charts inward vs the 6.0.0 baseline; opt out.
+    containShape: false,
     axisTick: {
       show: false,
     },

@@ -5,14 +5,14 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
 import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
+import { InlineDashboardLink } from "./InlineDashboardLink";
 import {
   CodeEditTablePills,
-  NavigateToTablePills,
+  GeneratedCardTablePills,
 } from "./MetabotAgentDataSourcePills";
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
@@ -37,21 +37,6 @@ export const AgentDataPartMessage = ({
     .with({ part: { type: "data-transform_suggestion" } }, (msg) => (
       <AgentSuggestionMessage message={msg} readonly={readonly} />
     ))
-    .with({ part: { type: "data-navigate_to" } }, ({ part }) => {
-      const sourcePills = (
-        <NavigateToTablePills
-          path={part.data}
-          messageId={readonly ? undefined : message.externalId}
-        />
-      );
-
-      return (
-        <Stack gap="md">
-          {debug && <NavigateToDataPart type={part.type} path={part.data} />}
-          {sourcePills}
-        </Stack>
-      );
-    })
     .with({ part: { type: "data-code_edit" } }, ({ part, metadata }) => {
       const sourcePills = (
         <CodeEditTablePills
@@ -74,6 +59,19 @@ export const AgentDataPartMessage = ({
         <Stack gap="md">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
           <MetabotInlineChart value={part.data} />
+          <GeneratedCardTablePills
+            value={part.data}
+            messageId={readonly ? undefined : message.externalId}
+          />
+        </Stack>
+      ),
+    )
+    .with(
+      { part: { type: "data-generated_entity", data: { type: "dashboard" } } },
+      ({ part }) => (
+        <Stack gap="md">
+          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+          <InlineDashboardLink value={part.data} />
         </Stack>
       ),
     )
@@ -155,34 +153,6 @@ const DataPartJsonCard = ({
     </Box>
   );
 };
-
-const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
-  <Flex
-    direction="row"
-    align="center"
-    justify="space-between"
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
-    className={Styles.agentPartCard}
-    p="sm"
-    pl="md"
-  >
-    <Flex align="center">
-      <Icon name="document" c="text-secondary" mr="sm" />
-      <Text fw="bold">{type}</Text>
-    </Flex>
-    <ActionIcon
-      component={ForwardRefLink}
-      to={path}
-      target="_blank"
-      h="sm"
-      aria-label={t`Visit`}
-      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
-    >
-      <Icon name="external" size="1rem" />
-    </ActionIcon>
-  </Flex>
-);
 
 const CodeEditDataPart = ({
   type,

@@ -4,6 +4,10 @@ import { useState } from "react";
 
 import { act, screen, waitFor } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import {
+  type GeneratedCard,
+  getGeneratedCardPath,
+} from "metabase/api/ai-streaming/schemas";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
@@ -14,6 +18,33 @@ import {
 } from "metabase/metabot/tests/utils";
 
 import { useMetabot } from "./use-metabot";
+
+const makeCard = (id: string, sourceTable = 1): GeneratedCard => ({
+  type: "card",
+  id,
+  title: "Chart",
+  query: {
+    id: `q-${id}`,
+    query: {
+      database: 1,
+      type: "query",
+      query: { "source-table": sourceTable },
+    },
+  },
+  display: "table",
+});
+
+const cardMessage = (id: string, sourceTable = 1) => ({
+  agentId: "omnibot" as const,
+  type: "data_part" as const,
+  part: {
+    type: "data-generated_entity" as const,
+    data: makeCard(id, sourceTable),
+  },
+});
+
+const cardPath = (id: string, sourceTable = 1) =>
+  getGeneratedCardPath(makeCard(id, sourceTable));
 
 /**
  * Covers `useMetabot()` non-passthrough wiring: `CurrentChart`,
@@ -59,7 +90,7 @@ describe("useMetabot", () => {
       return CurrentChart ? <CurrentChart drills={drills} /> : null;
     };
 
-    it("renders nothing before navigate_to fires", () => {
+    it("renders nothing before a chart path is set", () => {
       setup({ ui: <TestCurrentChart /> });
 
       expect(
@@ -67,7 +98,7 @@ describe("useMetabot", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("renders a chart after navigate_to fires", async () => {
+    it("renders a chart after a chart path is set", async () => {
       const { store } = setup({ ui: <TestCurrentChart /> });
 
       expect(
@@ -151,7 +182,7 @@ describe("useMetabot", () => {
       expect(identityChanges).toBe(0);
     });
 
-    it("updates when a second navigate_to fires", async () => {
+    it("updates when a second chart path is set", async () => {
       const { store } = setup({ ui: <TestCurrentChart /> });
 
       act(() => {
@@ -242,19 +273,12 @@ describe("useMetabot", () => {
       });
     });
 
-    it("projects a navigate_to data_part into a chart message with questionPath", async () => {
+    it("projects a generated_entity card data_part into a chart message with questionPath", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: {
-              type: "data-navigate_to",
-              data: "/question#base64",
-            },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c1") as any),
         );
       });
 
@@ -267,7 +291,7 @@ describe("useMetabot", () => {
         id: expect.any(String),
         role: "agent",
         type: "chart",
-        questionPath: "/question#base64",
+        questionPath: cardPath("c1"),
       });
     });
 
@@ -335,7 +359,7 @@ describe("useMetabot", () => {
       });
     });
 
-    it("keeps only the last navigate_to per turn, across multiple turns", async () => {
+    it("keeps only the last chart per turn, across multiple turns", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
@@ -348,18 +372,10 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "data-navigate_to", data: "/question#1a" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c1a", 1) as any),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "data-navigate_to", data: "/question#1b" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c1b", 2) as any),
         );
         store.dispatch(
           metabotActions.addUserMessage({
@@ -370,19 +386,15 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "data-navigate_to", data: "/question#2" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c2", 3) as any),
         );
       });
 
       const messages = await readMessages();
       const charts = messages.filter((m) => m.type === "chart");
       expect(charts).toHaveLength(2);
-      expect(charts[0].questionPath).toBe("/question#1b");
-      expect(charts[1].questionPath).toBe("/question#2");
+      expect(charts[0].questionPath).toBe(cardPath("c1b", 2));
+      expect(charts[1].questionPath).toBe(cardPath("c2", 3));
     });
   });
 
@@ -473,14 +485,7 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: {
-              type: "data-navigate_to",
-              data: "/question#base64",
-            },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c1") as any),
         );
       });
 
@@ -492,14 +497,7 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: {
-              type: "data-navigate_to",
-              data: "/question#base64",
-            },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c1") as any),
         );
       });
 
@@ -534,11 +532,7 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "data-navigate_to", data: "/question#abc" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c-abc", 1) as any),
         );
       });
 
@@ -548,7 +542,7 @@ describe("useMetabot", () => {
       const capturedChart = firstChart;
       expect(capturedChart).not.toBeNull();
 
-      // Open a second turn so both navigate_tos survive the per-turn filter.
+      // Open a second turn so both charts survive the per-turn filter.
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
@@ -559,11 +553,7 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "data-navigate_to", data: "/question#xyz" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("c-xyz", 2) as any),
         );
       });
 

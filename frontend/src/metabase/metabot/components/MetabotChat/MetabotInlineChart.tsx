@@ -3,9 +3,9 @@ import { noop } from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { getGeneratedCardPath } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { serializeCardForUrl } from "metabase/common/utils/card";
 import { Anchor, Box, Center, Flex } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
@@ -23,12 +23,9 @@ import S from "./MetabotInlineChart.module.css";
  * the conversation: it runs the card's embedded query ad-hoc and renders the
  * result; the title bar links out to the full question.
  */
-export function MetabotInlineChart({
-  value: { title, display, query },
-}: {
-  value: GeneratedCard;
-}) {
-  const datasetQuery = query.query;
+export function MetabotInlineChart({ value }: { value: GeneratedCard }) {
+  const { title, display } = value;
+  const datasetQuery = value.query.query;
 
   const card: Card = useMemo(
     () =>
@@ -41,11 +38,7 @@ export function MetabotInlineChart({
     [datasetQuery, display],
   );
 
-  const link = useMemo(
-    () =>
-      `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
-    [card],
-  );
+  const link = useMemo(() => getGeneratedCardPath(value), [value]);
 
   const { data: dataset, error } = useGetAdhocQueryQuery(datasetQuery);
 

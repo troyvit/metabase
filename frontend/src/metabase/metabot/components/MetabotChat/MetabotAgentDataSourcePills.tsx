@@ -10,9 +10,9 @@ import {
   useGetTableQuery,
   useSubmitMetabotSourceFeedbackMutation,
 } from "metabase/api";
+import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import {
   getCollectionLocationLabel,
   getCollectionLocationParts,
@@ -73,9 +73,8 @@ const isNativeDatasetQuery = (
 ): datasetQuery is NativeDatasetQuery =>
   "type" in datasetQuery && datasetQuery.type === "native";
 
-const decodeQueryFromPath = (path: string): DecodedQuery => {
+const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
   try {
-    const datasetQuery = deserializeCardFromQuery(path).dataset_query;
     if (!datasetQuery) {
       return { kind: "none" };
     }
@@ -606,14 +605,17 @@ const NativeSourcesRow = ({
   );
 };
 
-export const NavigateToTablePills = ({
+export const GeneratedCardTablePills = ({
   messageId,
-  path,
+  value,
 }: {
   messageId?: string;
-  path: string;
+  value: GeneratedCard;
 }) => {
-  const decoded = useMemo(() => decodeQueryFromPath(path), [path]);
+  const decoded = useMemo(
+    () => decodeQuery(value.query.query),
+    [value.query.query],
+  );
 
   if (decoded.kind === "none") {
     return null;

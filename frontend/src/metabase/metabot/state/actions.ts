@@ -9,6 +9,7 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { getGeneratedEntityPath } from "metabase/api/ai-streaming/schemas";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
@@ -426,14 +427,6 @@ export const sendAgentRequest = createAsyncThunk<
                   },
                 });
               })
-              .with({ type: "data-navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.data));
-
-                if (!isEmbeddingSdk()) {
-                  dispatch(push(part.data) as UnknownAction);
-                }
-                pushDataPart({ type: "data_part", part });
-              })
               .with({ type: "data-transform_suggestion" }, (part) => {
                 const suggestionId = nanoid();
                 const suggestedTransform = {
@@ -455,14 +448,36 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: { editorTransform, suggestionId },
                 });
               })
-              .with(
-                { type: "data-generated_entity" },
-                { type: "data-adhoc_viz" },
-                { type: "data-static_viz" },
-                (part) => {
+              .with({ type: "data-generated_entity" }, (part) => {
+                const value = part.data;
+                const inlineCapable = request.context.capabilities.includes(
+                  "frontend:inline_viz_v1",
+                );
+
+                if (inlineCapable) {
                   pushDataPart({ type: "data_part", part });
-                },
-              )
+                  return;
+                }
+
+                const path = getGeneratedEntityPath(value);
+
+                if (isEmbeddingSdk()) {
+                  if (value.type === "card") {
+                    dispatch(setNavigateToPath(path));
+                  }
+                  pushDataPart({ type: "data_part", part });
+                  return;
+                }
+
+                // Sidebar (in-app): navigate the user to the generated entity.
+                dispatch(push(path) as UnknownAction);
+              })
+              .with({ type: "data-adhoc_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "data-static_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
               .exhaustive();
           },
           onStart: function handleStart(event) {

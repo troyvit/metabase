@@ -446,13 +446,11 @@
                         "<instructions>\n" instruction-text "\n</instructions>")
            :data-parts        (when results-url
                                 [(streaming/viz-part
-                                  {:inline?   (shared/inline-viz-capable?)
-                                   :entity-id (:chart-id chart-result)
+                                  {:entity-id (:chart-id chart-result)
                                    :query-id  (:query-id structured)
                                    :query     (links/->legacy-mbql (:query structured))
                                    :display   chart-type
-                                   :title     title
-                                   :link      results-url})])
+                                   :title     title})])
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output

@@ -50,13 +50,11 @@
       {:output            (format-chart-output structured)
        :structured-output structured
        :data-parts        [(streaming/viz-part
-                            {:inline?   (shared/inline-viz-capable?)
-                             :entity-id (:chart-id result)
+                            {:entity-id (:chart-id result)
                              :query-id  (:query-id result)
                              :query     (links/->legacy-mbql (:query result))
                              :display   (:chart-type result)
-                             :title     title
-                             :link      (:results-url result)})]})
+                             :title     title})]})
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))
@@ -97,17 +95,12 @@
                new-chart-data))
       {:output            (format-chart-output structured)
        :structured-output structured
-       :data-parts        [(streaming/viz-part
-                            {:inline?   (shared/inline-viz-capable?)
-                             :entity-id (or (:chart_id new-chart-data) chart_id)
-                             :query-id  (or (:query_id chart) (str (random-uuid)))
-                             :query     (links/->legacy-mbql query)
-                             :display   new-viz
-                             :title     title
-                             :link      (links/pseudo-card->link
-                                         {:dataset_query query
-                                          :display new-viz
-                                          :displayIsLocked true})})]})
+       :data-parts [(streaming/viz-part
+                      {:entity-id (or (:chart_id new-chart-data) chart_id)
+                       :query-id  (or (:query_id new-chart-data) (str (random-uuid)))
+                       :query     (links/->legacy-mbql query)
+                       :display   new-viz
+                       :title     title})]})
     (catch Exception e
       (log/error e "Error editing chart")
       (if (:agent-error? (ex-data e))

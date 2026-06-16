@@ -33,6 +33,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
+import { refetchSiteSettings } from "metabase/api";
 import { api } from "metabase/api/client";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
@@ -40,7 +41,6 @@ import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-e
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
@@ -114,7 +114,7 @@ function _init(reducers, getRoutes, callback) {
   registerVisualizations();
   registerDashboardVisualizations();
 
-  store.dispatch(refreshSiteSettings());
+  store.dispatch(refetchSiteSettings());
 
   PLUGIN_APP_INIT_FUNCTIONS.forEach((init) => init());
 

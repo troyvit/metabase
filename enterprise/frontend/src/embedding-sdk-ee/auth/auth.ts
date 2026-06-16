@@ -28,7 +28,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { sessionApi } from "metabase/api";
+import { refetchSiteSettings, sessionApi } from "metabase/api";
 import { api } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import {
@@ -39,7 +39,6 @@ import {
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import MetabaseSettings from "metabase/utils/settings";
@@ -164,7 +163,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   // Fetch user and site settings
   const [user, siteSettings] = await Promise.all([
     dispatch(refreshCurrentUser()),
-    dispatch(refreshSiteSettings()),
+    dispatch(refetchSiteSettings()),
   ]);
 
   if (!user.payload) {
@@ -174,7 +173,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 
     throw MetabaseError.USER_FETCH_FAILED();
   }
-  if (!siteSettings.payload) {
+  if (!siteSettings.data) {
     throw MetabaseError.USER_FETCH_FAILED();
   }
 };

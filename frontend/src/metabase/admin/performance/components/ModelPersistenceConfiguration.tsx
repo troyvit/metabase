@@ -8,11 +8,11 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
+import { useLazyGetSettingsQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getShowMetabaseLinks,
@@ -69,7 +69,7 @@ export const ModelPersistenceConfiguration = () => {
     "persisted-model-refresh-cron-schedule",
   );
 
-  const dispatch = useDispatch();
+  const [refetchSiteSettings] = useLazyGetSettingsQuery();
   const [sendToast, removeToast] = useToast();
 
   const showLoadingToast = async () => {
@@ -108,7 +108,7 @@ export const ModelPersistenceConfiguration = () => {
       ? PersistedModelsApi.enablePersistence()
       : PersistedModelsApi.disablePersistence();
     await resolveWithToasts([promise]);
-    dispatch(refreshSiteSettings());
+    refetchSiteSettings();
   };
 
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
@@ -161,7 +161,7 @@ export const ModelPersistenceConfiguration = () => {
               onChange={async (value: unknown) => {
                 await resolveWithToasts([
                   PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                  dispatch(refreshSiteSettings()),
+                  refetchSiteSettings(),
                 ]);
               }}
             />

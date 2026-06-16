@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { refetchSiteSettings } from "metabase/api";
 import { userUpdated } from "metabase/redux/user";
 import { UserApi } from "metabase/services";
 
@@ -57,7 +57,7 @@ export function useMcpUserAndSettingsFetch({
 
         const [currentUser] = await Promise.all([
           UserApi.current(),
-          store.dispatch(refreshSiteSettings()),
+          store.dispatch(refetchSiteSettings()),
         ]);
 
         if (!isMounted) {

@@ -1,14 +1,9 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { userApi } from "metabase/api";
+import { refetchSiteSettings, settingsApi, userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { createDatabase } from "metabase/redux/databases";
-import {
-  refreshSiteSettings,
-  updateSetting,
-  updateSettings,
-} from "metabase/redux/settings";
 import type {
   InviteInfo,
   Locale,
@@ -110,7 +105,7 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     MetabaseSettings.set("setup-token", null);
     dispatch(goToNextStep());
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
-    dispatch(refreshSiteSettings());
+    dispatch(refetchSiteSettings());
   },
 );
 
@@ -185,11 +180,11 @@ export const submitLicenseToken = createAsyncThunk(
     try {
       if (licenseToken) {
         await dispatch(
-          updateSetting({
+          settingsApi.endpoints.updateSetting.initiate({
             key: "premium-embedding-token",
             value: licenseToken,
           }),
-        );
+        ).unwrap();
       }
       trackLicenseTokenStepSubmitted(Boolean(licenseToken));
     } catch (err) {
@@ -208,11 +203,11 @@ export const updateTracking = createAsyncThunk(
   async (isTrackingAllowed: boolean, { dispatch, rejectWithValue }) => {
     try {
       await dispatch(
-        updateSetting({
+        settingsApi.endpoints.updateSetting.initiate({
           key: "anon-tracking-enabled",
           value: isTrackingAllowed,
         }),
-      );
+      ).unwrap();
       trackTrackingChanged(isTrackingAllowed);
       MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
     } catch (error) {
@@ -244,6 +239,6 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     settingsToChange["setup-license-active-at-setup"] = isLicenseActive;
 
-    dispatch(updateSettings(settingsToChange));
+    dispatch(settingsApi.endpoints.updateSettings.initiate(settingsToChange));
   },
 );

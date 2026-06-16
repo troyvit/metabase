@@ -69,7 +69,19 @@ export const {
   useForgotPasswordMutation,
   useCheckPasswordMutation,
   useGetSessionPropertiesQuery,
+  useLazyGetSessionPropertiesQuery,
 } = sessionApi;
 
-// alias for easier use
+// aliases for easier use
 export const useGetSettingsQuery = useGetSessionPropertiesQuery;
+export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
+
+/**
+ * Force a refetch of the session properties (settings) from non-React code.
+ * Dispatch it: `dispatch(refetchSiteSettings())`. In React, prefer
+ * `useLazyGetSettingsQuery()`'s trigger instead.
+ */
+export const refetchSiteSettings = () =>
+  sessionApi.endpoints.getSessionProperties.initiate(undefined, {
+    forceRefetch: true,
+  });

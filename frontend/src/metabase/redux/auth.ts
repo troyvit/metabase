@@ -5,9 +5,9 @@ import {
 } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
+import { refetchSiteSettings } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { openNavbar } from "metabase/redux/app";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
@@ -48,7 +48,7 @@ export const refreshSession = createAsyncThunk(
   async (_, { dispatch }) => {
     await Promise.all([
       dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings()),
+      dispatch(refetchSiteSettings()),
     ]);
     await dispatch(refreshLocale()).unwrap();
   },

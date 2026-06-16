@@ -1408,17 +1408,42 @@ describe("issue 51934 (EMB-189)", () => {
     const QA_DB_NAME = "QA Postgres12";
     const DATA_SOURCE_NAME = "Orders";
 
-    // The data/join pickers re-render while their collection list loads, AND
-    // clicking a menu item itself triggers a re-render (card metadata fetch +
-    // selection state change) that detaches Cypress's actionability retry on
-    // `.click()`. Wait for the list to be stable (loader gone), then click
-    // with `{ force: true }` to skip the post-find actionability re-check —
-    // we already know the item is visible; we don't want to retry-and-detach
-    // when clicking it causes its own re-render.
-    const clickPickerItem = (name) => {
+    // Picker items come in two flavours that need OPPOSITE click handling:
+    //
+    // `selectPickerItem` — a leaf (question/model). Clicking it selects the data
+    // source and auto-opens the join popover, which then re-renders continuously
+    // while it resolves its path and fetches card/query metadata. A plain
+    // `.click()` keeps re-querying and hits `element-has-detached-from-dom` as the
+    // node is replaced mid-render, so we click with `{ force: true }` to skip the
+    // actionability re-check (the item is already on screen).
+    const selectPickerItem = (name) => {
       cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
       cy.findByRole("menuitem", { name }).click({ force: true });
     };
+
+    // `navigateIntoFolder` — a collection. Drilling in opens its submenu, which
+    // lists that collection's contents.
+    const navigateIntoFolder = (name) => {
+      cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
+      cy.findByRole("menuitem", { name }).should("be.visible").click();
+    };
+
+    // The EMB-1895 flake: the Models bucket lists models via
+    // GET /api/collection/:id/items?models=dataset. The picker fires several
+    // collection-items requests with different `models=` params, and under
+    // network throttling the `models=dataset` response can still be in flight
+    // when we click the model — the submenu shows an empty "Nothing here" list
+    // and the click misses. Alias the dataset request per collection so each
+    // model selection can wait for *its own* response (not an earlier
+    // `models=card` one) before clicking.
+    const interceptDatasetItems = (collectionId, alias) =>
+      cy
+        .intercept({
+          method: "GET",
+          pathname: `/api/collection/${collectionId}/items`,
+          query: { models: "dataset" },
+        })
+        .as(alias);
 
     // Any click that swaps one popover for another (data-source -> join,
     // notebook-step click -> data-picker) can leave both briefly — or, on a
@@ -1440,6 +1465,15 @@ describe("issue 51934 (EMB-189)", () => {
         .filter(":visible")
         .should("have.length.at.least", 1)
         .last();
+
+    // Register the dataset-items intercepts up front: the Models bucket fetches a
+    // collection's models as soon as the bucket is shown (eager preview), which is
+    // earlier than any per-click registration — so register before the first
+    // picker interaction to be sure we never miss the request.
+    cy.get("@collectionId").then((collectionId) =>
+      interceptDatasetItems(collectionId, "modelCollectionDatasets"),
+    );
+    interceptDatasetItems("root", "rootDatasets");
 
     // Each click below swaps the picker view (or selects an item), which
     // remounts the popover. A single `latestPopover().within(...)` would pin
@@ -1485,8 +1519,14 @@ describe("issue 51934 (EMB-189)", () => {
     latestPopover().within(() => {
       cy.findByText("Saved Questions").click();
     });
-    latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
-    latestPopover().within(() => clickPickerItem(QUESTION_IN_COLLECTION_NAME));
+    latestPopover().within(() => {
+      cy.findByText("Loading...").should("not.exist");
+    });
+    latestPopover().within(() => navigateIntoFolder(COLLECTION_NAME));
+    latestPopover().within(() => {
+      cy.findByText("Loading...").should("not.exist");
+    });
+    latestPopover().within(() => selectPickerItem(QUESTION_IN_COLLECTION_NAME));
 
     cy.log("the join popover is automatically opened");
     latestPopover().within(() => {
@@ -1497,7 +1537,7 @@ describe("issue 51934 (EMB-189)", () => {
         // brand color
         "rgb(80, 158, 226)",
       );
-      clickPickerItem(QUESTION_IN_COLLECTION_NAME);
+      selectPickerItem(QUESTION_IN_COLLECTION_NAME);
     });
 
     cy.log(
@@ -1513,8 +1553,9 @@ describe("issue 51934 (EMB-189)", () => {
     latestPopover().within(() => {
       cy.findByText("Models").click();
     });
-    latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
-    latestPopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
+    latestPopover().within(() => navigateIntoFolder(COLLECTION_NAME));
+    cy.wait("@modelCollectionDatasets");
+    latestPopover().within(() => selectPickerItem(MODEL_IN_COLLECTION_NAME));
 
     cy.log("the join popover is automatically opened");
     latestPopover().within(() => {
@@ -1525,15 +1566,16 @@ describe("issue 51934 (EMB-189)", () => {
         // brand color
         "rgb(80, 158, 226)",
       );
-      clickPickerItem(MODEL_IN_COLLECTION_NAME);
+      selectPickerItem(MODEL_IN_COLLECTION_NAME);
     });
 
     cy.log(
       "select a data source after selecting a join step should refresh the data picker on the join step",
     );
     H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
-    latestPopover().within(() => clickPickerItem("Our analytics"));
-    latestPopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
+    latestPopover().within(() => navigateIntoFolder("Our analytics"));
+    cy.wait("@rootDatasets");
+    latestPopover().within(() => selectPickerItem(MODEL_IN_ROOT_NAME));
 
     latestPopover().within(() => {
       cy.log("the collection of the new data source should be selected");

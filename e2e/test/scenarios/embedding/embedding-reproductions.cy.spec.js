@@ -1553,7 +1553,14 @@ describe("issue 51934 (EMB-189)", () => {
     latestPopover().within(() => {
       cy.findByText("Models").click();
     });
+    latestPopover().within(() => {
+      cy.findByText("Loading...").should("not.exist");
+    });
     latestPopover().within(() => navigateIntoFolder(COLLECTION_NAME));
+    latestPopover().within(() => {
+      cy.findByText("Loading...").should("not.exist");
+    });
+
     cy.wait("@modelCollectionDatasets");
     latestPopover().within(() => selectPickerItem(MODEL_IN_COLLECTION_NAME));
 

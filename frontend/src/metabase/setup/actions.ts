@@ -5,7 +5,7 @@ import { userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { createDatabase } from "metabase/redux/databases";
 import {
-  initializeSettings,
+  refreshSiteSettings,
   updateSetting,
   updateSettings,
 } from "metabase/redux/settings";
@@ -110,7 +110,7 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     MetabaseSettings.set("setup-token", null);
     dispatch(goToNextStep());
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
-    dispatch(initializeSettings());
+    dispatch(refreshSiteSettings());
   },
 );
 

@@ -1,7 +1,4 @@
-import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
-
 import { sessionApi, settingsApi } from "metabase/api";
-import type { State } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import type {
   EnterpriseSettingKey,
@@ -69,25 +66,6 @@ export const updateSetting = createThunkAction(
         ),
       ).unwrap();
     };
-  },
-);
-
-export const reloadSettings =
-  () => async (dispatch: ThunkDispatch<State, unknown, UnknownAction>) => {
-    await dispatch(refreshSiteSettings());
-  };
-
-export const INITIALIZE_SETTINGS =
-  "metabase/admin/settings/INITIALIZE_SETTINGS";
-export const initializeSettings = createThunkAction(
-  INITIALIZE_SETTINGS,
-  () => async (dispatch) => {
-    try {
-      await dispatch(reloadSettings());
-    } catch (error) {
-      console.error("error fetching settings", error);
-      throw error;
-    }
   },
 );
 

@@ -7,15 +7,10 @@ import type { TokenFeature, TokenStatus, Version } from "metabase-types/api";
 
 // The settings (a.k.a. session properties) live in the RTK Query cache rather
 // than a dedicated redux slice. `getSettings` reads them straight from that
-// cache, falling back so settings are never empty before the first fetch
-// resolves. Fallback order:
-//   1. the RTK Query cache (the source of truth, once fetched);
-//   2. `state.settings.values` — only present when a test constructs a raw
-//      `createMockState({ settings })` and calls a selector directly (no store,
-//      no render). The real store has no `settings` reducer so this is
-//      `undefined` in the app; it just honours the test-seed shim;
-//   3. `window.MetabaseBootstrap` — the server-injected bootstrap in the app,
-//      and what the render harness seeds in tests.
+// cache, falling back to `window.MetabaseBootstrap` so settings are never empty
+// before the first fetch resolves — exactly as in production, where the server
+// injects the bootstrap. The render harness seeds `window.MetabaseBootstrap` in
+// tests; pure-selector tests (no store/render) set it directly.
 const selectSessionProperties =
   sessionApi.endpoints.getSessionProperties.select();
 
@@ -23,7 +18,6 @@ export const getSettings: <S extends State>(state: S) => GetSettings<S> = (
   state,
 ) =>
   (selectSessionProperties(state).data ??
-    state.settings?.values ??
     window.MetabaseBootstrap ??
     {}) as GetSettings<typeof state>;
 

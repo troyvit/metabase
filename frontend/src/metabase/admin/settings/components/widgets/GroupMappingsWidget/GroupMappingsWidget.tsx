@@ -4,9 +4,9 @@ import {
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
+  useUpdateSettingMutation,
 } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/redux";
-import { updateSetting } from "metabase/redux/settings";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 import type { Settings } from "metabase-types/api/settings";
@@ -21,7 +21,7 @@ type GroupMappingsWidgetProps = {
 };
 
 export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
-  const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
   const { data } = useListPermissionsGroupsQuery({});
   const allGroups = data ?? EMPTY_GROUP_LIST;
   const mappings = useSelector(
@@ -44,9 +44,9 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
   );
   const handleUpdateSetting = useCallback(
     async (args: { key: string; value: Record<string, GroupId[]> }) => {
-      await dispatch(updateSetting(args));
+      await updateSetting(args as Parameters<typeof updateSetting>[0]).unwrap();
     },
-    [dispatch],
+    [updateSetting],
   );
 
   return (

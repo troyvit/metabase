@@ -91,12 +91,6 @@ export const SessionApi = {
   reset_password: POST("/api/session/reset_password"),
 };
 
-export const SettingsApi = {
-  list: GET("/api/setting"),
-  put: PUT("/api/setting/:key"),
-  putAll: PUT("/api/setting"),
-};
-
 export const PermissionsApi = {
   graph: GET("/api/permissions/graph"),
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),

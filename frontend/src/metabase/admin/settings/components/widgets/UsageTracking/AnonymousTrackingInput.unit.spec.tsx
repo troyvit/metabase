@@ -6,7 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
@@ -67,6 +67,8 @@ describe("AnonymousTrackingInput", () => {
 
   it("should toggle the anonymous tracking setting off", async () => {
     setup({ value: true });
+    // wait for the setting value to load before toggling
+    await waitFor(() => expect(screen.getByRole("switch")).toBeChecked());
     await userEvent.click(screen.getByRole("switch"));
     expect(trackingFN).toHaveBeenCalledWith(false);
 
@@ -79,6 +81,8 @@ describe("AnonymousTrackingInput", () => {
 
   it("should toggle the anonymous tracking setting on", async () => {
     setup({ value: false });
+    // wait for the setting to load before toggling
+    await screen.findByText(/Enable the collection of anonymous usage data/);
     await userEvent.click(screen.getByRole("switch"));
 
     const [{ url, body }] = await findRequests("PUT");

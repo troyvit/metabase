@@ -28,6 +28,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import { sessionApi } from "metabase/api";
 import { api } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import {
@@ -38,11 +39,11 @@ import {
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import MetabaseSettings from "metabase/utils/settings";
-import type { Settings } from "metabase-types/api";
+import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -93,7 +94,13 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         }),
       );
       dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
-      dispatch(loadSettings(authState.siteSettings as Settings));
+      dispatch(
+        sessionApi.util.upsertQueryData(
+          "getSessionProperties",
+          undefined,
+          authState.siteSettings as EnterpriseSettings,
+        ),
+      );
       MetabaseSettings.setAll(authState.siteSettings as Settings);
 
       // Set up the refresh handler so API calls can renew the token later.

@@ -165,8 +165,15 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  // `settings` is no longer a live redux slice — it's served from the
+  // `getSessionProperties` RTK Query cache. Pull any seeded settings out of the
+  // preloaded state (so combineReducers doesn't warn about an unknown key) and
+  // bridge them into the cache below, after the store is built.
+  let {
+    routing,
+    settings: seededSettings,
+    ...initialState
+  }: Partial<State> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -195,6 +202,17 @@ export function getTestStoreAndWrapper({
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
+  }
+
+  // Settings are served from the `getSessionProperties` RTK Query cache, with a
+  // synchronous fallback to `window.MetabaseBootstrap` (see `getSettings`) —
+  // exactly as in production, where the bootstrap covers the gap before the
+  // query fetches on mount. Seeding the bootstrap (rather than the cache) gives
+  // synchronous reads without suppressing the on-mount fetch, so tests behave
+  // like the real app. `window.MetabaseBootstrap` is reset between tests in
+  // jest-setup to keep this per-test.
+  if (seededSettings?.values) {
+    window.MetabaseBootstrap = seededSettings.values;
   }
 
   const storeMiddleware = _.compact([

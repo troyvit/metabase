@@ -19,6 +19,12 @@ beforeEach(() => {
 afterEach(async () => {
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
+
+  // Settings are read from the `getSessionProperties` RTK Query cache with a
+  // synchronous fallback to `window.MetabaseBootstrap` (mirroring production,
+  // where the server injects the bootstrap). The render harness sets it per
+  // test; reset it so a seeded value can't leak into the next test.
+  delete window.MetabaseBootstrap;
   // Wait for any pending fetch requests to complete
   await fetchMock.callHistory.flush();
 

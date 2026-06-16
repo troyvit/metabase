@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -55,15 +54,13 @@ const setup = async () => {
 
 describe("LocalizationSettingsPage", () => {
   it("should render a LocalizationSettingsPage", async () => {
-    await act(() => setup());
-    [
-      "Instance language",
-      "Report timezone",
-      "First day of the week",
-      "Instance settings",
-    ].forEach((text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
-    });
+    setup();
+    expect(await screen.findByText("Instance language")).toBeInTheDocument();
+    ["Report timezone", "First day of the week", "Instance settings"].forEach(
+      (text) => {
+        expect(screen.getByText(text)).toBeInTheDocument();
+      },
+    );
   });
 
   it("should update multiple settings", async () => {

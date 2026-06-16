@@ -2,6 +2,7 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
+import { seedApiQueryCache } from "__support__/rtk-query-cache";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
@@ -35,8 +36,14 @@ export function renderWithSDKProviders(
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  // `settings` is served from the `getSessionProperties` RTK Query cache rather
+  // than a redux slice; capture any seeded settings here and seed the cache
+  // through `preloadedState` below.
+  let {
+    routing,
+    settings: seededSettings,
+    ...initialState
+  }: Partial<State> = createMockState(storeInitialState);
 
   const sdkReducerNames = Object.keys(sdkReducers);
   initialState = _.pick(
@@ -46,9 +53,24 @@ export function renderWithSDKProviders(
 
   // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.
   // Without this, SDK components will not render due to missing token features and settings.
-  if (!storeInitialState.settings && initialState.settings) {
-    initialState.settings.values["token-features"].embedding_sdk = true;
-    initialState.settings.values["enable-embedding-sdk"] = true;
+  if (!storeInitialState.settings && seededSettings) {
+    seededSettings.values["token-features"].embedding_sdk = true;
+    seededSettings.values["enable-embedding-sdk"] = true;
+  }
+
+  if (seededSettings?.values) {
+    initialState = {
+      ...initialState,
+      [Api.reducerPath]: seedApiQueryCache(
+        (initialState as Partial<State>)[Api.reducerPath],
+        [
+          {
+            endpointName: "getSessionProperties",
+            value: seededSettings.values,
+          },
+        ],
+      ),
+    } as SdkStoreState;
   }
 
   const storeMiddleware = _.compact([Api.middleware]);

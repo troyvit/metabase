@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -80,9 +79,11 @@ const setup = async (enablePublicSharing = false) => {
 
 describe("PublicSharingSettingsPage", () => {
   it("should render the PublicSharingSettingsPage with public sharing disabled", async () => {
-    await act(() => setup(false));
+    setup(false);
 
-    expect(screen.getByText("Enable Public Sharing")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Enable Public Sharing"),
+    ).toBeInTheDocument();
 
     [
       "Shared dashboards",
@@ -99,8 +100,8 @@ describe("PublicSharingSettingsPage", () => {
   });
 
   it("should render the PublicSharingSettingsPage with public sharing enabled", async () => {
-    await act(() => setup(true));
-    [
+    setup(true);
+    for (const text of [
       "Enable Public Sharing",
       "Shared dashboards",
       "Shared questions",
@@ -110,9 +111,9 @@ describe("PublicSharingSettingsPage", () => {
       "Test Dashboard",
       "Test Question",
       "Test Document",
-    ].forEach((text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
-    });
+    ]) {
+      expect(await screen.findByText(text)).toBeInTheDocument();
+    }
   });
 
   it("should toggle public sharing", async () => {

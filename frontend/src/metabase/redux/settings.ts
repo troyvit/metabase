@@ -1,15 +1,18 @@
-import {
-  type ThunkDispatch,
-  type UnknownAction,
-  createAction,
-  createReducer,
-} from "@reduxjs/toolkit";
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
-import { sessionApi } from "metabase/api";
+import { sessionApi, settingsApi } from "metabase/api";
 import type { State } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
-import { SettingsApi } from "metabase/services";
-import type { Settings, UserSettings } from "metabase-types/api";
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
+  UserSettings,
+} from "metabase-types/api";
+
+type UpdateSettingArg = {
+  key: EnterpriseSettingKey;
+  value: EnterpriseSettingValue<EnterpriseSettingKey>;
+};
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 
@@ -23,10 +26,6 @@ export const refreshSiteSettings = createAsyncThunk(
     );
     return response.data;
   },
-);
-
-export const loadSettings = createAction<Settings>(
-  "metabase/settings/LOAD_SETTINGS",
 );
 
 interface UpdateUserSettingProps<K extends keyof UserSettings> {
@@ -46,24 +45,16 @@ export const updateUserSetting = createAsyncThunk(
     }: UpdateUserSettingProps<keyof UserSettings>,
     { dispatch },
   ) => {
-    const setting = {
-      key,
-      value,
-    };
-    try {
-      await SettingsApi.put(setting);
-      if (!shouldRefresh) {
-        // When we aren't refreshing all the settings, we need to put the setting into the state
-        return setting;
-      }
-    } catch (error) {
-      console.error("error updating user setting", setting, error);
-      throw error;
-    } finally {
-      if (shouldRefresh) {
-        await dispatch(refreshSiteSettings());
-      }
-    }
+    // Delegate to the RTK Query mutations. `updateSetting` invalidates the
+    // session-properties tag (pessimistic refetch); `updateUserSetting` does an
+    // optimistic single-value cache patch with rollback and no refetch — the
+    // idiomatic form of the old `shouldRefresh: false` hand-rolled cache write.
+    const mutation = shouldRefresh
+      ? settingsApi.endpoints.updateSetting
+      : settingsApi.endpoints.updateUserSetting;
+    await dispatch(
+      mutation.initiate({ key, value } as UpdateSettingArg),
+    ).unwrap();
   },
 );
 
@@ -72,14 +63,11 @@ export const updateSetting = createThunkAction(
   UPDATE_SETTING,
   function (setting: { key: string; value: unknown }) {
     return async function (dispatch: any) {
-      try {
-        await SettingsApi.put(setting);
-      } catch (error) {
-        console.error("error updating setting", setting, error);
-        throw error;
-      } finally {
-        await dispatch(refreshSiteSettings());
-      }
+      await dispatch(
+        settingsApi.endpoints.updateSetting.initiate(
+          setting as UpdateSettingArg,
+        ),
+      ).unwrap();
     };
   },
 );
@@ -108,41 +96,9 @@ export const updateSettings = createThunkAction(
   UPDATE_SETTINGS,
   function (settings) {
     return async function (dispatch) {
-      try {
-        await SettingsApi.putAll(settings);
-      } catch (error) {
-        console.error("error updating settings", settings, error);
-        throw error;
-      } finally {
-        await dispatch(reloadSettings());
-      }
+      await dispatch(
+        settingsApi.endpoints.updateSettings.initiate(settings),
+      ).unwrap();
     };
-  },
-);
-
-export const settings = createReducer(
-  // note: this sets the initial state to the current values in the window object
-  // this is necessary so that we never have empty settings
-  { values: window.MetabaseBootstrap || {}, loading: false },
-  (builder) => {
-    builder
-      .addCase(refreshSiteSettings.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(refreshSiteSettings.fulfilled, (state) => {
-        state.loading = false;
-      })
-      .addCase(refreshSiteSettings.rejected, (state) => {
-        state.loading = false;
-      })
-      .addCase(loadSettings, (state, { payload }) => {
-        state.loading = false;
-        state.values = payload;
-      })
-      .addCase(updateUserSetting.fulfilled, (state, { payload }) => {
-        if (payload) {
-          state.values[payload.key] = payload.value;
-        }
-      });
   },
 );

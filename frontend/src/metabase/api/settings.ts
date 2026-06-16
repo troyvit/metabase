@@ -9,6 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { sessionApi } from "./session";
 import { invalidateTags, listTag, tag } from "./tags";
 
 export const settingsApi = Api.injectEndpoints({
@@ -75,6 +76,38 @@ export const settingsApi = Api.injectEndpoints({
           listTag("embedding-hub-checklist"),
         ]),
     }),
+    // Optimistic single-value update: patch the session-properties cache
+    // immediately and roll back if the PUT fails, *without* invalidating the
+    // session-properties tag — so we don't refetch the whole settings payload.
+    // This is the idiomatic replacement for the old `shouldRefresh: false` path,
+    // which hand-wrote the value into redux with no rollback. Use this for
+    // high-frequency UI-driven settings (toggles, dismissed prompts); use
+    // `updateSetting` (pessimistic, invalidates) for admin settings.
+    updateUserSetting: builder.mutation<
+      void,
+      {
+        key: EnterpriseSettingKey;
+        value: EnterpriseSettingValue<EnterpriseSettingKey>;
+      }
+    >({
+      query: ({ key, value }) => ({
+        method: "PUT",
+        url: `/api/setting/${encodeURIComponent(key)}`,
+        body: { value },
+      }),
+      onQueryStarted: async ({ key, value }, { dispatch, queryFulfilled }) => {
+        const patch = dispatch(
+          sessionApi.util.updateQueryData(
+            "getSessionProperties",
+            undefined,
+            (draft) => {
+              (draft as Record<string, unknown>)[key] = value;
+            },
+          ),
+        );
+        queryFulfilled.catch(patch.undo);
+      },
+    }),
   }),
 });
 
@@ -84,4 +117,5 @@ export const {
   useGetAdminSettingsDetailsQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,
+  useUpdateUserSettingMutation,
 } = settingsApi;

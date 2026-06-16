@@ -184,9 +184,11 @@ describe("HomepageSetting", () => {
 
   it("selects Dashboard mode when custom-homepage is on", async () => {
     setup({ "custom-homepage": true, "custom-homepage-dashboard": 4242 });
-    expect(
-      await screen.findByRole("radio", { name: "Dashboard" }),
-    ).toBeChecked();
+    const dashboardRadio = await screen.findByRole("radio", {
+      name: "Dashboard",
+    });
+    // wait for the custom-homepage setting to load before asserting selection
+    await waitFor(() => expect(dashboardRadio).toBeChecked());
     expect(await screen.findByText("My dashboard")).toBeInTheDocument();
   });
 

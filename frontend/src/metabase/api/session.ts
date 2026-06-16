@@ -1,4 +1,3 @@
-import { loadSettings } from "metabase/redux/settings";
 import {
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
@@ -46,9 +45,10 @@ export const sessionApi = Api.injectEndpoints({
         url: sessionPropertiesPath,
       }),
       providesTags: ["session-properties"],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+      onQueryStarted: (_, { queryFulfilled }) =>
         handleQueryFulfilled(queryFulfilled, (data) => {
-          dispatch(loadSettings(data));
+          // The query response itself is the source of truth (read via
+          // `getSettings`); here we only keep the legacy side channels in sync.
           // compatibility layer for legacy settings on the window object
           MetabaseSettings.setAll(data);
 

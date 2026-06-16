@@ -158,6 +158,10 @@ describe("GeneralLimitsSettingsSection", () => {
   it("updates reset period setting when user clicks a different option", async () => {
     setup({ limitPeriod: "monthly" });
     await screen.findByText("When should usage limits reset?");
+    // wait for the saved value to load before changing it
+    await waitFor(() =>
+      expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked(),
+    );
 
     await userEvent.click(screen.getByText("Daily"));
 

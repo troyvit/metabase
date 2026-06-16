@@ -6,7 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
@@ -74,6 +74,8 @@ describe("CollectUserDataInput", () => {
 
   it("should toggle the `analytics-pii-retention-enabled` setting off", async () => {
     setup({ value: true });
+    // wait for the setting value to load before toggling
+    await waitFor(() => expect(screen.getByRole("switch")).toBeChecked());
     await userEvent.click(screen.getByRole("switch"));
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "analytics_pii_retention_changed",
@@ -90,6 +92,10 @@ describe("CollectUserDataInput", () => {
 
   it("should toggle the `analytics-pii-retention-enabled` setting on", async () => {
     setup({ value: false });
+    // wait for the setting to load before toggling
+    await screen.findByText(
+      /Enable logging of path, user agent, and IP address/,
+    );
     await userEvent.click(screen.getByRole("switch"));
 
     const [{ url, body }] = await findRequests("PUT");

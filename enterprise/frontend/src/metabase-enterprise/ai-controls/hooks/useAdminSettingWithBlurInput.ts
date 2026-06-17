@@ -21,16 +21,31 @@ type StringSettingKey = {
  * saves shouldn't be debounced (e.g. Metabot system prompts).
  */
 export function useAdminSettingWithBlurInput(settingName: StringSettingKey) {
-  const { value: settingValue, updateSetting } = useAdminSetting(settingName);
+  const {
+    value: settingValue,
+    isLoading,
+    updateSetting,
+  } = useAdminSetting(settingName);
   const [inputValue, setInputValue] = useState(settingValue);
   const lastSavedRef = useRef(settingValue);
+  const hasHydrated = useRef(false);
+  const hasUserEdited = useRef(false);
 
+  // Initialise local state from the setting once it has loaded (`isLoading` is
+  // false). `hasUserEdited` keeps this from clobbering a value the user started
+  // typing before the load resolved.
   useEffect(() => {
-    if (lastSavedRef.current === undefined && settingValue !== undefined) {
+    if (!hasHydrated.current && !isLoading && !hasUserEdited.current) {
       setInputValue(settingValue);
       lastSavedRef.current = settingValue;
+      hasHydrated.current = true;
     }
-  }, [settingValue]);
+  }, [isLoading, settingValue]);
+
+  const handleInputChange = useCallback((value: typeof settingValue) => {
+    hasUserEdited.current = true;
+    setInputValue(value);
+  }, []);
 
   const trimmedInput = (inputValue ?? "").trim();
   const trimmedSaved = (lastSavedRef.current ?? "").trim();
@@ -56,7 +71,7 @@ export function useAdminSettingWithBlurInput(settingName: StringSettingKey) {
 
   return {
     inputValue,
-    handleInputChange: setInputValue,
+    handleInputChange,
     handleBlur: save,
   };
 }

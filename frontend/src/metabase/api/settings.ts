@@ -79,10 +79,9 @@ export const settingsApi = Api.injectEndpoints({
     // Optimistic single-value update: patch the session-properties cache
     // immediately and roll back if the PUT fails, *without* invalidating the
     // session-properties tag — so we don't refetch the whole settings payload.
-    // This is the idiomatic replacement for the old `shouldRefresh: false` path,
-    // which hand-wrote the value into redux with no rollback. Use this for
-    // high-frequency UI-driven settings (toggles, dismissed prompts); use
-    // `updateSetting` (pessimistic, invalidates) for admin settings.
+    // Use this for high-frequency UI-driven settings (toggles, dismissed
+    // prompts); use `updateSetting` (pessimistic, invalidates) for admin
+    // settings.
     updateUserSetting: builder.mutation<
       void,
       {

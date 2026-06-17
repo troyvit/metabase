@@ -47,9 +47,9 @@ export const sessionApi = Api.injectEndpoints({
       providesTags: ["session-properties"],
       onQueryStarted: (_, { queryFulfilled }) =>
         handleQueryFulfilled(queryFulfilled, (data) => {
-          // The query response itself is the source of truth (read via
-          // `getSettings`); here we only keep the legacy side channels in sync.
-          // compatibility layer for legacy settings on the window object
+          // Keep the non-redux settings consumers in sync. `MetabaseSettings`
+          // is read by code that runs outside the store/React (i18n, dom
+          // helpers, theming).
           MetabaseSettings.setAll(data);
 
           // Sync color-scheme setting to window.MetabaseUserColorScheme

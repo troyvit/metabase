@@ -165,10 +165,10 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  // `settings` is no longer a live redux slice — it's served from the
-  // `getSessionProperties` RTK Query cache. Pull any seeded settings out of the
-  // preloaded state (so combineReducers doesn't warn about an unknown key) and
-  // bridge them into the cache below, after the store is built.
+  // There's no `settings` reducer — settings come from the `getSessionProperties`
+  // cache / `window.MetabaseBootstrap`. Pull any seeded settings out of the
+  // preloaded state (so combineReducers doesn't warn about the unknown key) and
+  // seed the bootstrap below.
   let {
     routing,
     settings: seededSettings,
@@ -204,13 +204,10 @@ export function getTestStoreAndWrapper({
     reducers = { ...reducers, ...customReducers };
   }
 
-  // Settings are served from the `getSessionProperties` RTK Query cache, with a
-  // synchronous fallback to `window.MetabaseBootstrap` (see `getSettings`) —
-  // exactly as in production, where the bootstrap covers the gap before the
-  // query fetches on mount. Seeding the bootstrap (rather than the cache) gives
-  // synchronous reads without suppressing the on-mount fetch, so tests behave
-  // like the real app. `window.MetabaseBootstrap` is reset between tests in
-  // jest-setup to keep this per-test.
+  // Seed `window.MetabaseBootstrap` so `getSettings` resolves the test's
+  // settings synchronously (it's the fallback before the on-mount fetch).
+  // Seeding the bootstrap leaves the on-mount fetch intact, so components fetch
+  // as they do in the app. Reset between tests in jest-setup-env.
   if (seededSettings?.values) {
     window.MetabaseBootstrap = seededSettings.values;
   }

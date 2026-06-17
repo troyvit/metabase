@@ -21,6 +21,7 @@ import {
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -120,6 +121,7 @@ const setup = ({
       <HomepageSetting />
       <UndoListing />
     </div>,
+    { storeInitialState: { settings: createMockSettingsState(settings) } },
   );
 };
 
@@ -184,11 +186,9 @@ describe("HomepageSetting", () => {
 
   it("selects Dashboard mode when custom-homepage is on", async () => {
     setup({ "custom-homepage": true, "custom-homepage-dashboard": 4242 });
-    const dashboardRadio = await screen.findByRole("radio", {
-      name: "Dashboard",
-    });
-    // wait for the custom-homepage setting to load before asserting selection
-    await waitFor(() => expect(dashboardRadio).toBeChecked());
+    expect(
+      await screen.findByRole("radio", { name: "Dashboard" }),
+    ).toBeChecked();
     expect(await screen.findByText("My dashboard")).toBeInTheDocument();
   });
 

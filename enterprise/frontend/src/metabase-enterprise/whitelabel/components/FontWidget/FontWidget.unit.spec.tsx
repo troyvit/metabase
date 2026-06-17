@@ -7,6 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -39,7 +40,9 @@ const setup = async (
   ]);
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<FontWidget />);
+  renderWithProviders(<FontWidget />, {
+    storeInitialState: { settings: createMockSettingsState(settings) },
+  });
   await screen.findByText("Font");
   return waitFor(async () => {
     const gets = await findRequests("GET");
@@ -120,14 +123,12 @@ describe("FontWidget", () => {
 
     it("should show custom font inputs when custom font is selected", async () => {
       await setup("Custom…");
-      expect(
-        await screen.findByTestId("font-files-widget"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("font-files-widget")).toBeInTheDocument();
     });
 
     it("should update font urls", async () => {
       await setup("Custom…");
-      const filesTable = await screen.findByTestId("font-files-widget");
+      const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
       expect(inputs).toHaveLength(3);
 
@@ -203,7 +204,7 @@ describe("FontWidget", () => {
         "application-font-files": customFonts,
       });
 
-      const filesTable = await screen.findByTestId("font-files-widget");
+      const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
 
       expect(inputs).toHaveLength(3);
@@ -218,7 +219,7 @@ describe("FontWidget", () => {
     it("should add a font file with a query param", async () => {
       const url = "https://example.com/regular.ttf?hash=1337h4x0r";
       await setup("Custom…");
-      const filesTable = await screen.findByTestId("font-files-widget");
+      const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
       expect(inputs).toHaveLength(3);
 
@@ -240,7 +241,7 @@ describe("FontWidget", () => {
     it("should accept a font file with an invalid url", async () => {
       const url = "there's no font here";
       await setup("Custom…");
-      const filesTable = await screen.findByTestId("font-files-widget");
+      const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
       expect(inputs).toHaveLength(3);
 
@@ -263,8 +264,7 @@ describe("FontWidget", () => {
 
 async function clickSelect(from: string, to: string) {
   const input = await screen.findByRole("textbox", { name: "Font" });
-  // wait for the font setting value to load before interacting
-  await waitFor(() => expect(input).toHaveValue(from));
+  expect(input).toHaveValue(from);
   await userEvent.click(input);
   const option = await screen.findByText(to);
   return userEvent.click(option);

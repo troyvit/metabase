@@ -3,6 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useToast } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import { getSetting } from "metabase/selectors/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
@@ -26,7 +28,6 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   settingName: SettingName,
 ) => {
   const {
-    data: settings,
     isLoading: settingsLoading,
     isFetching: settingsFetching,
     ...apiProps
@@ -98,9 +99,12 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     [updateSettings, sendToast],
   );
 
-  const settingValue = settings?.[
-    settingName
-  ] as EnterpriseSettingValue<SettingName>;
+  // Read the value through `getSetting` so it resolves from the cache with a
+  // synchronous fallback to the bootstrap (available before the fetch resolves),
+  // the same as `useSetting`.
+  const settingValue = useSelector((state) =>
+    getSetting(state, settingName),
+  ) as EnterpriseSettingValue<SettingName>;
 
   return {
     value: settingValue,

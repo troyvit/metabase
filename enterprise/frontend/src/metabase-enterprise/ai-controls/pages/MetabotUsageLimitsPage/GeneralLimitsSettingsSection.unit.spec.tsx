@@ -10,6 +10,7 @@ import {
   setupUpdateAIControlsInstanceLimitEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -21,19 +22,20 @@ function setup({
   quotaMessage = "",
   instanceMaxUsage = null as number | null,
 } = {}) {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "metabot-limit-unit": limitType,
-      "metabot-limit-reset-rate": limitPeriod,
-      "metabot-quota-reached-message": quotaMessage || null,
-    }),
-  );
+  const settingValues = {
+    "metabot-limit-unit": limitType,
+    "metabot-limit-reset-rate": limitPeriod,
+    "metabot-quota-reached-message": quotaMessage || null,
+  };
+  setupPropertiesEndpoints(createMockSettings(settingValues));
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupAIControlsInstanceLimitEndpoint({ max_usage: instanceMaxUsage });
   setupUpdateAIControlsInstanceLimitEndpoint();
 
-  renderWithProviders(<GeneralLimitsSettingsSection />);
+  renderWithProviders(<GeneralLimitsSettingsSection />, {
+    storeInitialState: { settings: createMockSettingsState(settingValues) },
+  });
 }
 
 describe("GeneralLimitsSettingsSection", () => {
@@ -158,10 +160,7 @@ describe("GeneralLimitsSettingsSection", () => {
   it("updates reset period setting when user clicks a different option", async () => {
     setup({ limitPeriod: "monthly" });
     await screen.findByText("When should usage limits reset?");
-    // wait for the saved value to load before changing it
-    await waitFor(() =>
-      expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked(),
-    );
+    expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked();
 
     await userEvent.click(screen.getByText("Daily"));
 

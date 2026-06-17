@@ -101,19 +101,24 @@ describe("PublicSharingSettingsPage", () => {
 
   it("should render the PublicSharingSettingsPage with public sharing enabled", async () => {
     setup(true);
-    for (const text of [
-      "Enable Public Sharing",
-      "Shared dashboards",
-      "Shared questions",
-      "Shared action forms",
-      "Shared documents",
-      "Test Action",
-      "Test Dashboard",
-      "Test Question",
-      "Test Document",
-    ]) {
-      expect(await screen.findByText(text)).toBeInTheDocument();
-    }
+    // `AdminSettingInput` renders null until the settings queries settle, and
+    // the "Test …" entries come from separate public-list endpoints — so the
+    // page fills in asynchronously. waitFor retries the whole set until done.
+    await waitFor(() => {
+      [
+        "Enable Public Sharing",
+        "Shared dashboards",
+        "Shared questions",
+        "Shared action forms",
+        "Shared documents",
+        "Test Action",
+        "Test Dashboard",
+        "Test Question",
+        "Test Document",
+      ].forEach((text) => {
+        expect(screen.getByText(text)).toBeInTheDocument();
+      });
+    });
   });
 
   it("should toggle public sharing", async () => {

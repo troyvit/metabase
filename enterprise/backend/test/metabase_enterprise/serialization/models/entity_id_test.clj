@@ -61,6 +61,8 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback

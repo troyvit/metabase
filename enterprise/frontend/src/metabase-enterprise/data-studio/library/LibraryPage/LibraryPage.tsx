@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
@@ -22,8 +22,10 @@ import {
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
 import { CreateMenu } from "./components/CreateMenu";
+import { LibraryBulkActions } from "./components/LibraryBulkActions";
 import { PublishTableModal } from "./components/PublishTableModal";
 import { useLibraryCollections, useLibraryTreeTableInstance } from "./hooks";
+import { useLibraryBulkSelection } from "./hooks/useLibraryBulkSelection";
 import { getTreeRowHref, getWritableCollection } from "./utils";
 
 export function LibraryPage() {
@@ -64,6 +66,19 @@ function LibraryPageContent() {
       getWritableCollection(libraryCollection, "library-metrics"),
     [libraryCollection],
   );
+
+  const {
+    selectedItems,
+    getSelectionState,
+    onCheckboxClick,
+    clear: clearSelection,
+  } = useLibraryBulkSelection(treeTableInstance.rows);
+
+  // Clear selection when entering or leaving search (the tree content changes).
+  const isSearching = searchQuery.trim().length > 0;
+  useEffect(() => {
+    clearSelection();
+  }, [isSearching, clearSelection]);
 
   return (
     <>
@@ -108,6 +123,9 @@ function LibraryPageContent() {
                 ) : (
                   <TreeTable
                     instance={treeTableInstance}
+                    showCheckboxes
+                    getSelectionState={getSelectionState}
+                    onCheckboxClick={onCheckboxClick}
                     emptyState={
                       emptyMessage ? (
                         <ListEmptyState label={emptyMessage} />
@@ -135,6 +153,10 @@ function LibraryPageContent() {
         opened={showPublishTableModal}
         onClose={closePublishTableModal}
         onPublished={closePublishTableModal}
+      />
+      <LibraryBulkActions
+        selectedItems={selectedItems}
+        onClear={clearSelection}
       />
     </>
   );

@@ -37,10 +37,10 @@
 (deftest crufty-tables-test
   (testing "south_migrationhistory, being a CRUFTY table, should still be synced, but marked as such"
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-a-crufty-table
-      (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :visibility_type :cruft :initial_sync_status "complete"}
-               {:name "ACQUIRED_TOUCANS"       :visibility_type nil :initial_sync_status "complete"}}
-             (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
-                    (into {} table))))))))
+                (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :visibility_type :cruft :initial_sync_status "complete"}
+                         {:name "ACQUIRED_TOUCANS"       :visibility_type nil :initial_sync_status "complete"}}
+                       (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
+                              (into {} table))))))))
 
 (deftest transform-temp-tables-are-skipped-without-premium-features
   (let [temp-table   {:name   "mb_transform_temp_table_temp_123"
@@ -51,18 +51,18 @@
     (testing "when hosted, includes transform temporary tables"
       (mt/with-premium-features #{:hosting}
         (is (= #{normal-table temp-table}
-               (#'sync-tables/table-set db-metadata)))))
+               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))
     (testing "when hosted with `transforms` enabled, excludes the temp tables"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (is (= #{normal-table}
-               (#'sync-tables/table-set db-metadata)))))))
+               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))))
 
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
-    (mt/with-temp [:model/Database db {}
-                   :model/Table    table-1 {:name "Table 1" :db_id (u/the-id db)}
-                   :model/Table    _       {:name "Table 2" :db_id (u/the-id db)}]
-      (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
+    (mt/with-temp [:model/Database db               {}
+                   :model/Table    {table-1-id :id} {:name "Table 1" :db_id (u/the-id db)}
+                   :model/Table    _                {:name "Table 2" :db_id (u/the-id db)}]
+      (#'sync-tables/retire-tables! #{table-1-id})
       (is (= {"Table 1" false "Table 2" true}
              (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db)))))))
 
@@ -71,32 +71,32 @@
     (let [dbdef (mt/dataset-definition "sync-retired-table"
                                        [["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]]])]
       (mt/dataset dbdef
-        (t2/update! :model/Table (mt/id :user) {:active false})
-        ;; table description is changed
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                       [(sql.tx/standalone-table-comment-sql
-                         (:engine (mt/db))
-                         dbdef
-                         (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
-        (sync/sync-database! (mt/db) {:sync :schema})
-        (is (=? {:active true
-                 :description "added comment"}
-                (t2/select-one :model/Table (mt/id :user))))))))
+                  (t2/update! :model/Table (mt/id :user) {:active false})
+                  ;; table description is changed
+                  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                                 [(sql.tx/standalone-table-comment-sql
+                                   (:engine (mt/db))
+                                   dbdef
+                                   (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
+                  (sync/sync-database! (mt/db) {:sync :schema})
+                  (is (=? {:active true
+                           :description "added comment"}
+                          (t2/select-one :model/Table (mt/id :user))))))))
 
 (deftest sync-estimated-row-count-test
   (mt/test-driver :postgres
-    (testing "Can sync row count"
-      (mt/dataset test-data
-        ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
-        (sql-jdbc.execute/do-with-connection-with-options
-         driver/*driver*
-         (mt/db)
-         nil
-         (fn [conn]
-           (next.jdbc/execute! conn ["VACUUM;"])))
-        (sync/sync-database! (mt/db) {:scan :schema})
-        (is (= 100
-               (t2/select-one-fn :estimated_row_count :model/Table (mt/id :venues))))))))
+                  (testing "Can sync row count"
+                    (mt/dataset test-data
+                                ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
+                                (sql-jdbc.execute/do-with-connection-with-options
+                                 driver/*driver*
+                                 (mt/db)
+                                 nil
+                                 (fn [conn]
+                                   (next.jdbc/execute! conn ["VACUUM;"])))
+                                (sync/sync-database! (mt/db) {:scan :schema})
+                                (is (= 100
+                                       (t2/select-one-fn :estimated_row_count :model/Table (mt/id :venues))))))))
 
 (defmacro ^:private run-twice
   "Run body twice. In this case, we are checking that creating and updating syncs the tables correctly w.r.t.
@@ -358,7 +358,7 @@
                       {:schema "public" :name "apple"}
                       {:schema "public" :name "mango"}}]
       (mt/with-temp [:model/Database db {}]
-        (#'sync-tables/create-or-reactivate-tables! db metadatas)
+        (#'sync-tables/create-tables! db metadatas)
         (is (= ["beta" "apple" "mango" "zebra"]
                (map :name (t2/select [:model/Table :name]
                                      :db_id (u/the-id db)

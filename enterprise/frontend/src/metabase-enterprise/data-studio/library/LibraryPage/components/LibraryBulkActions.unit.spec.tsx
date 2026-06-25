@@ -31,6 +31,24 @@ jest.mock("metabase/common/components/Pickers", () => ({
   ),
 }));
 
+jest.mock("../../components/UnpublishTablesModal", () => ({
+  UnpublishTablesModal: ({
+    isOpened,
+    tableIds,
+    onUnpublish,
+  }: {
+    isOpened: boolean;
+    tableIds: number[];
+    onUnpublish: () => void;
+  }) =>
+    isOpened ? (
+      <div>
+        <span data-testid="unpublish-table-ids">{tableIds.join(",")}</span>
+        <button onClick={onUnpublish}>Confirm unpublish</button>
+      </div>
+    ) : null,
+}));
+
 function item(
   model: SelectedItem["model"],
   entityId: number,
@@ -54,24 +72,27 @@ function item(
 function setup({
   selectedItems,
   selectionSection = "data",
+  isAllTables = false,
   defaultCollectionId,
 }: {
   selectedItems: SelectedItem[];
   selectionSection?: LibrarySection | null;
+  isAllTables?: boolean;
   defaultCollectionId?: number;
 }) {
-  const onMoved = jest.fn();
+  const onActionComplete = jest.fn();
   const onClear = jest.fn();
   renderWithProviders(
     <LibraryBulkActions
       selectedItems={selectedItems}
       selectionSection={selectionSection}
+      isAllTables={isAllTables}
       defaultCollectionId={defaultCollectionId}
-      onMoved={onMoved}
+      onActionComplete={onActionComplete}
       onClear={onClear}
     />,
   );
-  return { onMoved, onClear };
+  return { onActionComplete, onClear };
 }
 
 describe("isMoveDestinationDisabled", () => {
@@ -142,7 +163,7 @@ describe("LibraryBulkActions", () => {
     fetchMock.put("path:/api/table/1", { id: 1 }, { name: "t1" });
     fetchMock.put("path:/api/table/2", { id: 2 }, { name: "t2" });
 
-    const { onMoved } = setup({
+    const { onActionComplete } = setup({
       selectedItems: [item("table", 1, 10), item("table", 2, 10)],
     });
 
@@ -150,8 +171,8 @@ describe("LibraryBulkActions", () => {
     await userEvent.click(screen.getByRole("button", { name: "Move" }));
     await userEvent.click(screen.getByRole("button", { name: "Destination" }));
 
-    await waitFor(() => expect(onMoved).toHaveBeenCalled());
-    expect(onMoved).toHaveBeenCalledWith(
+    await waitFor(() => expect(onActionComplete).toHaveBeenCalled());
+    expect(onActionComplete).toHaveBeenCalledWith(
       "data",
       expect.arrayContaining([10, 99]),
     );
@@ -161,5 +182,33 @@ describe("LibraryBulkActions", () => {
     expect(
       await fetchMock.callHistory.lastCall("t2")?.request?.json(),
     ).toMatchObject({ collection_id: 99 });
+  });
+
+  it("shows Unpublish only when every selected item is a table", () => {
+    setup({
+      selectedItems: [item("table", 1, 10), item("collection", 2, 10)],
+      isAllTables: false,
+    });
+    expect(
+      screen.queryByRole("button", { name: "Unpublish" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("unpublishes the selected tables and completes the action", async () => {
+    const { onActionComplete } = setup({
+      selectedItems: [item("table", 1, 10), item("table", 2, 11)],
+      isAllTables: true,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Unpublish" }));
+    expect(screen.getByTestId("unpublish-table-ids")).toHaveTextContent("1,2");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm unpublish" }),
+    );
+    expect(onActionComplete).toHaveBeenCalledWith(
+      "data",
+      expect.arrayContaining([10, 11]),
+    );
   });
 });

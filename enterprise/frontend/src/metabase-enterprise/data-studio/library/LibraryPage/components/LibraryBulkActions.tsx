@@ -4,6 +4,7 @@ import { msgid, ngettext, t } from "ttag";
 import {
   BulkActionBar,
   BulkActionButton,
+  BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import {
   CollectionPickerModal,
@@ -12,18 +13,26 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
+import { UnpublishTablesModal } from "../../components/UnpublishTablesModal";
 import type {
   LibrarySection,
   SelectedItem,
 } from "../hooks/library-bulk-selection.utils";
-import { useMoveLibraryItems } from "../hooks/useMoveLibraryItems";
+import {
+  getAffectedCollectionIds,
+  useMoveLibraryItems,
+} from "../hooks/useMoveLibraryItems";
+
+type BulkAction = "move" | "unpublish";
 
 type LibraryBulkActionsProps = {
   selectedItems: SelectedItem[];
   selectionSection: LibrarySection | null;
+  /** True when every selected item is a table (enables Unpublish). */
+  isAllTables: boolean;
   /** The active section's library collection — the Move picker's default focus. */
   defaultCollectionId: CollectionId | undefined;
-  onMoved: (
+  onActionComplete: (
     section: LibrarySection,
     affectedCollectionIds: CollectionId[],
   ) => void;
@@ -31,18 +40,19 @@ type LibraryBulkActionsProps = {
 };
 
 /**
- * Floating bulk-action bar for the Library. Move is universal (all sections);
- * the destination picker is scoped to the selection's section. (Unpublish for
- * all-table selections is wired in a later checkpoint.)
+ * Floating bulk-action bar for the Library. Move is universal (all sections;
+ * the destination picker is scoped to the selection's section); Unpublish shows
+ * only when every selected item is a table.
  */
 export function LibraryBulkActions({
   selectedItems,
   selectionSection,
+  isAllTables,
   defaultCollectionId,
-  onMoved,
+  onActionComplete,
   onClear,
 }: LibraryBulkActionsProps) {
-  const [isMoveOpen, setIsMoveOpen] = useState(false);
+  const [action, setAction] = useState<BulkAction>();
   const moveItems = useMoveLibraryItems();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -65,7 +75,7 @@ export function LibraryBulkActions({
   const handleMove = async (destinationId: RegularCollectionId | null) => {
     const section = selectionSection;
     if (section == null) {
-      setIsMoveOpen(false);
+      setAction(undefined);
       return;
     }
     try {
@@ -78,21 +88,35 @@ export function LibraryBulkActions({
       } else {
         sendSuccessToast(t`Moved`);
       }
-      onMoved(section, affectedCollectionIds);
+      onActionComplete(section, affectedCollectionIds);
     } finally {
-      setIsMoveOpen(false);
+      setAction(undefined);
+    }
+  };
+
+  // UnpublishTablesModal handles the request, dependency warnings, and toast.
+  const handleUnpublished = () => {
+    const section = selectionSection;
+    setAction(undefined);
+    if (section != null) {
+      onActionComplete(section, getAffectedCollectionIds(selectedItems, null));
     }
   };
 
   return (
     <>
       <BulkActionBar opened={count > 0} message={message}>
-        <BulkActionButton onClick={() => setIsMoveOpen(true)}>
+        <BulkActionButton onClick={() => setAction("move")}>
           {t`Move`}
         </BulkActionButton>
+        {isAllTables && (
+          <BulkActionDangerButton onClick={() => setAction("unpublish")}>
+            {t`Unpublish`}
+          </BulkActionDangerButton>
+        )}
         <BulkActionButton onClick={onClear}>{t`Clear`}</BulkActionButton>
       </BulkActionBar>
-      {isMoveOpen && selectionSection != null && (
+      {action === "move" && selectionSection != null && (
         <LibraryMoveModal
           section={selectionSection}
           initialCollectionId={
@@ -100,7 +124,15 @@ export function LibraryBulkActions({
           }
           movingCollectionIds={movingCollectionIds}
           onMove={handleMove}
-          onClose={() => setIsMoveOpen(false)}
+          onClose={() => setAction(undefined)}
+        />
+      )}
+      {action === "unpublish" && (
+        <UnpublishTablesModal
+          isOpened
+          tableIds={selectedItems.map((item) => item.entityId)}
+          onUnpublish={handleUnpublished}
+          onClose={() => setAction(undefined)}
         />
       )}
     </>

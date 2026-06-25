@@ -78,6 +78,7 @@ function LibraryPageContent() {
   const {
     selectedItems,
     selectionSection,
+    isAllTables,
     getSelectionState,
     onCheckboxClick,
     clear: clearSelection,
@@ -98,7 +99,7 @@ function LibraryPageContent() {
         ? metricCollection?.id
         : undefined;
 
-  const handleMoved = useCallback(
+  const handleActionComplete = useCallback(
     (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
       if (section === "data") {
         refreshTableCollections(affectedCollectionIds);
@@ -188,8 +189,9 @@ function LibraryPageContent() {
       <LibraryBulkActions
         selectedItems={selectedItems}
         selectionSection={selectionSection}
+        isAllTables={isAllTables}
         defaultCollectionId={moveDefaultCollectionId}
-        onMoved={handleMoved}
+        onActionComplete={handleActionComplete}
         onClear={clearSelection}
       />
     </>

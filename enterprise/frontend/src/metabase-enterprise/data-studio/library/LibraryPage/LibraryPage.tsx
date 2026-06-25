@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
@@ -18,6 +18,7 @@ import {
   TreeTable,
   TreeTableSkeleton,
 } from "metabase/ui";
+import type { CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
@@ -25,6 +26,7 @@ import { CreateMenu } from "./components/CreateMenu";
 import { LibraryBulkActions } from "./components/LibraryBulkActions";
 import { PublishTableModal } from "./components/PublishTableModal";
 import { useLibraryCollections, useLibraryTreeTableInstance } from "./hooks";
+import type { LibrarySection } from "./hooks/library-bulk-selection.utils";
 import { useLibraryBulkSelection } from "./hooks/useLibraryBulkSelection";
 import { getTreeRowHref, getWritableCollection } from "./utils";
 
@@ -50,15 +52,21 @@ function LibraryPageContent() {
       "exclude-archived": true,
       "include-library": true,
     });
-  const { treeTableInstance, isChildrenLoading, isLoading, emptyMessage } =
-    useLibraryTreeTableInstance({
-      collections,
-      isLoadingCollections,
-      searchQuery,
-      onPublishTableClick: openPublishTableModal,
-    });
+  const {
+    treeTableInstance,
+    isChildrenLoading,
+    isLoading,
+    emptyMessage,
+    refreshTableCollections,
+    refreshMetricCollections,
+  } = useLibraryTreeTableInstance({
+    collections,
+    isLoadingCollections,
+    searchQuery,
+    onPublishTableClick: openPublishTableModal,
+  });
 
-  const { libraryCollection, tableCollection } =
+  const { libraryCollection, tableCollection, metricCollection } =
     useLibraryCollections(collections);
   const writableMetricCollection = useMemo(
     () =>
@@ -69,6 +77,7 @@ function LibraryPageContent() {
 
   const {
     selectedItems,
+    selectionSection,
     getSelectionState,
     onCheckboxClick,
     clear: clearSelection,
@@ -79,6 +88,28 @@ function LibraryPageContent() {
   useEffect(() => {
     clearSelection();
   }, [isSearching, clearSelection]);
+
+  // The library collection for the active section — the Move picker's default
+  // focus when an item's own source collection isn't known.
+  const moveDefaultCollectionId =
+    selectionSection === "data"
+      ? tableCollection?.id
+      : selectionSection === "metrics"
+        ? metricCollection?.id
+        : undefined;
+
+  const handleMoved = useCallback(
+    (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
+      if (section === "data") {
+        refreshTableCollections(affectedCollectionIds);
+      } else if (section === "metrics") {
+        refreshMetricCollections(affectedCollectionIds);
+      }
+      // Snippet sections refetch via RTK tag invalidation.
+      clearSelection();
+    },
+    [refreshTableCollections, refreshMetricCollections, clearSelection],
+  );
 
   return (
     <>
@@ -156,6 +187,9 @@ function LibraryPageContent() {
       />
       <LibraryBulkActions
         selectedItems={selectedItems}
+        selectionSection={selectionSection}
+        defaultCollectionId={moveDefaultCollectionId}
+        onMoved={handleMoved}
         onClear={clearSelection}
       />
     </>

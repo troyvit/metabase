@@ -314,5 +314,7 @@ export function useLibraryTreeTableInstance({
     isChildrenLoading,
     isLoading,
     emptyMessage,
+    refreshTableCollections,
+    refreshMetricCollections,
   };
 }

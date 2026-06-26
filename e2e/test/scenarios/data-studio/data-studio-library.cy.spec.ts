@@ -505,6 +505,10 @@ describe("scenarios > data studio > library", () => {
             name: "Folder C",
             parent_id: dataCollection.id,
           });
+          createLibraryCollection({
+            name: "Folder D",
+            parent_id: dataCollection.id,
+          });
         },
       );
       H.DataStudio.Library.visit();
@@ -520,6 +524,8 @@ describe("scenarios > data studio > library", () => {
       cy.log("Selection is limited to one section, replacing across sections");
       H.DataStudio.Library.selectRow("Orders");
       bulkBar().findByText("1 item selected").should("be.visible");
+      // A table is selected, so Move to trash is hidden (tables are unpublished).
+      bulkBar().findByText("Move to trash").should("not.exist");
       H.DataStudio.Library.selectRow(TRUSTED_ORDERS_METRIC.name);
       bulkBar().findByText("1 item selected").should("be.visible");
       H.DataStudio.Library.rowCheckbox("Orders").should("not.be.checked");
@@ -592,6 +598,26 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.libraryPage()
         .findByText("Reviews")
         .should("not.exist");
+
+      cy.log("Move multiple collections to trash (confirm warns of unpublish)");
+      H.DataStudio.Library.selectRow("Folder A");
+      H.DataStudio.Library.selectRow("Folder C");
+      bulkBar().findByText("2 items selected").should("be.visible");
+      bulkBar().findByText("Unpublish").should("not.exist");
+      bulkBar().findByRole("button", { name: "Move to trash" }).click();
+      H.modal().within(() => {
+        cy.findByText("Move to trash?").should("be.visible");
+        // Plural wording, since multiple collections are selected.
+        cy.findByText(/these collections will also unpublish/).should(
+          "be.visible",
+        );
+        cy.button("Move to trash").click();
+      });
+
+      bulkBar().should("not.exist");
+      H.DataStudio.Library.collectionItem("Folder D").should("be.visible");
+      H.DataStudio.Library.collectionItem("Folder A").should("not.exist");
+      H.DataStudio.Library.collectionItem("Folder C").should("not.exist");
     });
 
     it("offers no bulk selection on remote-sync read-only instances", () => {

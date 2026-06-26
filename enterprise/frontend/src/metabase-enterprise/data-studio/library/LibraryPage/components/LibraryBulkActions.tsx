@@ -10,6 +10,7 @@ import {
   CollectionPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
+import { useConfirmation } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
@@ -18,10 +19,10 @@ import type {
   LibrarySection,
   SelectedItem,
 } from "../hooks/library-bulk-selection.utils";
-import {
-  getAffectedCollectionIds,
-  useMoveLibraryItems,
-} from "../hooks/useMoveLibraryItems";
+import { getAffectedCollectionIds } from "../hooks/library-item-updates";
+import { useMoveLibraryItems } from "../hooks/useMoveLibraryItems";
+import { useTrashLibraryItems } from "../hooks/useTrashLibraryItems";
+import { getArchiveLibraryCollectionsMessage } from "../utils";
 
 type BulkAction = "move" | "unpublish";
 
@@ -47,6 +48,8 @@ export function LibraryBulkActions({
 }: LibraryBulkActionsProps) {
   const [action, setAction] = useState<BulkAction>();
   const moveItems = useMoveLibraryItems();
+  const trashItems = useTrashLibraryItems();
+  const { show: showConfirm, modalContent: confirmModal } = useConfirmation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const count = selectedItems.length;
@@ -55,6 +58,8 @@ export function LibraryBulkActions({
     `${count} items selected`,
     count,
   );
+
+  const hasTables = selectedItems.some((item) => item.model === "table");
 
   // A collection can't be moved into itself or one of its descendants.
   const movingCollectionIds = useMemo(
@@ -95,12 +100,46 @@ export function LibraryBulkActions({
     }
   };
 
+  const handleTrash = async () => {
+    const section = selectionSection;
+    if (section == null) {
+      return;
+    }
+    const { failedCount, affectedCollectionIds } =
+      await trashItems(selectedItems);
+    if (failedCount > 0) {
+      sendErrorToast(
+        t`Couldn't move ${failedCount} of ${count} items to trash`,
+      );
+    } else {
+      sendSuccessToast(t`Moved to trash`);
+    }
+    onActionComplete(section, affectedCollectionIds);
+  };
+
+  const confirmTrash = () => {
+    showConfirm({
+      title: t`Move to trash?`,
+      message:
+        selectionSection === "data"
+          ? getArchiveLibraryCollectionsMessage(count)
+          : undefined,
+      confirmButtonText: t`Move to trash`,
+      onConfirm: handleTrash,
+    });
+  };
+
   return (
     <>
       <BulkActionBar opened={count > 0} message={message}>
         <BulkActionButton onClick={() => setAction("move")}>
           {t`Move`}
         </BulkActionButton>
+        {!hasTables && (
+          <BulkActionButton onClick={confirmTrash}>
+            {t`Move to trash`}
+          </BulkActionButton>
+        )}
         {isAllTables && (
           <BulkActionDangerButton onClick={() => setAction("unpublish")}>
             {t`Unpublish`}
@@ -127,6 +166,7 @@ export function LibraryBulkActions({
           onClose={() => setAction(undefined)}
         />
       )}
+      {confirmModal}
     </>
   );
 }

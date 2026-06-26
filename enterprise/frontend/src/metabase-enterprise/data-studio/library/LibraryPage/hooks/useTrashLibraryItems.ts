@@ -4,52 +4,43 @@ import {
   useUpdateCardMutation,
   useUpdateCollectionMutation,
   useUpdateSnippetMutation,
-  useUpdateTableMutation,
 } from "metabase/api";
 import { useDispatch } from "metabase/redux";
-import type { RegularCollectionId } from "metabase-types/api";
 
 import type { SelectedItem } from "./library-bulk-selection.utils";
 import { runLibraryItemUpdates } from "./library-item-updates";
 
-export function useMoveLibraryItems() {
-  const [updateTable] = useUpdateTableMutation();
+export function useTrashLibraryItems() {
   const [updateCard] = useUpdateCardMutation();
   const [updateSnippet] = useUpdateSnippetMutation();
   const [updateCollection] = useUpdateCollectionMutation();
   const dispatch = useDispatch();
 
   return useCallback(
-    (items: SelectedItem[], destinationId: RegularCollectionId | null) =>
+    (items: SelectedItem[]) =>
       runLibraryItemUpdates(
         items,
         (item) => {
           switch (item.model) {
-            case "table":
-              return updateTable({
-                id: item.entityId,
-                collection_id: destinationId,
-              }).unwrap();
             case "metric":
-              return updateCard({
-                id: item.entityId,
-                collection_id: destinationId,
-              }).unwrap();
+              return updateCard({ id: item.entityId, archived: true }).unwrap();
             case "snippet":
               return updateSnippet({
                 id: item.entityId,
-                collection_id: destinationId,
+                archived: true,
               }).unwrap();
             case "collection":
               return updateCollection({
                 id: item.entityId,
-                parent_id: destinationId,
+                archived: true,
               }).unwrap();
+            case "table":
+              return Promise.resolve();
           }
         },
-        destinationId,
+        null,
         dispatch,
       ),
-    [updateTable, updateCard, updateSnippet, updateCollection, dispatch],
+    [updateCard, updateSnippet, updateCollection, dispatch],
   );
 }

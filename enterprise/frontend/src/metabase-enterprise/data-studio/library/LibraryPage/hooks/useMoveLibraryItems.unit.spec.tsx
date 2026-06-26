@@ -3,10 +3,7 @@ import fetchMock from "fetch-mock";
 import { act, renderHookWithProviders } from "__support__/ui";
 
 import type { SelectedItem } from "./library-bulk-selection.utils";
-import {
-  getAffectedCollectionIds,
-  useMoveLibraryItems,
-} from "./useMoveLibraryItems";
+import { useMoveLibraryItems } from "./useMoveLibraryItems";
 
 function item(
   model: SelectedItem["model"],
@@ -27,17 +24,6 @@ function item(
     canWrite: true,
   };
 }
-
-describe("getAffectedCollectionIds", () => {
-  it("unions sources and destination, de-duplicated and excluding null", () => {
-    expect(
-      getAffectedCollectionIds(
-        [item("table", 1, 10), item("metric", 2, 11), item("snippet", 3, null)],
-        99,
-      ).sort(),
-    ).toEqual([10, 11, 99]);
-  });
-});
 
 describe("useMoveLibraryItems", () => {
   it("moves each model with the correct mutation and payload", async () => {

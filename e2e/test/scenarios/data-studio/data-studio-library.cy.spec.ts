@@ -663,8 +663,6 @@ function openTableOptions(name: string) {
     .click();
 }
 
-// The bulk-action bar (toast-card) is the generic BulkActionBar shared with the
-// collections pages, so it isn't scoped to the Library helper.
 function bulkBar() {
   return cy.findByTestId("toast-card");
 }

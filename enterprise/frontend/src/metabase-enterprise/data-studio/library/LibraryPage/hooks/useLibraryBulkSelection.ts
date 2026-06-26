@@ -36,6 +36,7 @@ export function useLibraryBulkSelection(
   rows: Row<TreeItem>[],
 ): UseLibraryBulkSelectionResult {
   const [selected, setSelected] = useState<TreeItem[]>([]);
+  // Used for range selection
   const lastSelectedIndexRef = useRef<number | null>(null);
 
   const visibleItems = useMemo(() => rows.map((row) => row.original), [rows]);

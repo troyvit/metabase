@@ -73,13 +73,13 @@ function snippetItem(
     name: `Snippet ${id}`,
     icon: "snippet",
     model: "snippet",
-    data: {
+    data: createMockCollectionItem({
       id,
       name: `Snippet ${id}`,
       model: "snippet",
       collection_id: opts.collectionId ?? null,
       can_write: true,
-    } as unknown as TreeItem["data"],
+    }),
   };
 }
 

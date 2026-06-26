@@ -28,9 +28,7 @@ type BulkAction = "move" | "unpublish";
 type LibraryBulkActionsProps = {
   selectedItems: SelectedItem[];
   selectionSection: LibrarySection | null;
-  /** True when every selected item is a table (enables Unpublish). */
   isAllTables: boolean;
-  /** The active section's library collection — the Move picker's default focus. */
   defaultCollectionId: CollectionId | undefined;
   onActionComplete: (
     section: LibrarySection,

@@ -1,7 +1,14 @@
 import { isRootCollection } from "metabase/common/collections/utils";
-import type { TreeItem } from "metabase/data-studio/common/types";
+import type {
+  CollectionData,
+  TreeItem,
+} from "metabase/data-studio/common/types";
 import type { SelectionState } from "metabase/ui";
-import type { CollectionId, DatabaseId } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionItem,
+  DatabaseId,
+} from "metabase-types/api";
 
 export type LibrarySection = "data" | "metrics" | "snippets";
 
@@ -12,35 +19,22 @@ export type SelectedItem = {
   model: SelectableModel;
   section: LibrarySection;
   entityId: number;
-  /** Source parent: `collection_id` for leaves, `parent_id` for collections. */
   sourceCollectionId: CollectionId | null;
   databaseId?: DatabaseId;
   canWrite: boolean;
 };
 
-// `TreeItem.data` under-types the real runtime payload (a full Collection /
-// CollectionItem / NativeQuerySnippet); read the fields we need via these.
-type CollectionLikeData = {
-  id: number | string;
-  type?: string | null;
-  namespace?: string | null;
-  is_library_root?: boolean;
-  parent_id?: CollectionId | null;
-  can_write?: boolean;
-};
+const isCollectionRow = (
+  item: TreeItem,
+): item is TreeItem & { data: CollectionData } => item.model === "collection";
 
-type LeafLikeData = {
-  id: number;
-  collection_id?: CollectionId | null;
-  database_id?: DatabaseId;
-  can_write?: boolean;
-};
-
-const asCollection = (item: TreeItem): CollectionLikeData =>
-  item.data as unknown as CollectionLikeData;
-
-const asLeaf = (item: TreeItem): LeafLikeData =>
-  item.data as unknown as LeafLikeData;
+const isLeafRow = (
+  item: TreeItem,
+): item is TreeItem & {
+  model: "table" | "metric" | "snippet";
+  data: CollectionItem;
+} =>
+  item.model === "table" || item.model === "metric" || item.model === "snippet";
 
 const keyOf = (item: TreeItem): string => item.id;
 
@@ -49,40 +43,36 @@ export function getSelectedKeySet(selected: TreeItem[]): Set<string> {
 }
 
 export function getItemSection(item: TreeItem): LibrarySection | null {
-  switch (item.model) {
-    case "table":
-      return "data";
-    case "metric":
-      return "metrics";
-    case "snippet":
-      return "snippets";
-    case "collection": {
-      const data = asCollection(item);
-      if (data.namespace === "snippets") {
-        return "snippets";
-      }
-      if (data.type === "library-metrics") {
-        return "metrics";
-      }
-      if (data.type === "library-data") {
-        return "data";
-      }
-      return null;
-    }
-    default:
-      return null;
+  if (item.model === "table") {
+    return "data";
   }
+  if (item.model === "metric") {
+    return "metrics";
+  }
+  if (item.model === "snippet") {
+    return "snippets";
+  }
+  if (isCollectionRow(item)) {
+    const { data } = item;
+    if (data.namespace === "snippets") {
+      return "snippets";
+    }
+    if (data.type === "library-metrics") {
+      return "metrics";
+    }
+    if (data.type === "library-data") {
+      return "data";
+    }
+  }
+  return null;
 }
 
 export function isSectionRoot(item: TreeItem): boolean {
-  if (item.model !== "collection") {
+  if (!isCollectionRow(item)) {
     return false;
   }
-  const data = asCollection(item);
-  return (
-    data.is_library_root === true ||
-    isRootCollection({ id: data.id as CollectionId })
-  );
+  const { data } = item;
+  return data.is_library_root === true || isRootCollection({ id: data.id });
 }
 
 export function isSelectableItem(item: TreeItem): boolean {
@@ -131,7 +121,6 @@ export function getRowSelectionState(
   return "none";
 }
 
-/** Toggle a single selectable item, resetting selection when the section changes. */
 export function toggleItem(selected: TreeItem[], item: TreeItem): TreeItem[] {
   const section = getItemSection(item);
   const current = getSelectionSection(selected);
@@ -143,7 +132,6 @@ export function toggleItem(selected: TreeItem[], item: TreeItem): TreeItem[] {
     : [...selected, item];
 }
 
-/** Select/deselect all direct selectables of a section (switching section if needed). */
 export function toggleSectionRoot(
   selected: TreeItem[],
   sectionRoot: TreeItem,
@@ -197,10 +185,10 @@ export function isAllTables(selected: TreeItem[]): boolean {
 }
 
 export function deriveSelectedItems(selected: TreeItem[]): SelectedItem[] {
-  return selected.map((item) => {
+  return selected.map((item): SelectedItem => {
     const section = getItemSection(item) as LibrarySection;
-    if (item.model === "collection") {
-      const data = asCollection(item);
+    if (isCollectionRow(item)) {
+      const { data } = item;
       return {
         key: item.id,
         model: "collection",
@@ -210,15 +198,18 @@ export function deriveSelectedItems(selected: TreeItem[]): SelectedItem[] {
         canWrite: data.can_write ?? false,
       };
     }
-    const data = asLeaf(item);
-    return {
-      key: item.id,
-      model: item.model as SelectableModel,
-      section,
-      entityId: data.id,
-      sourceCollectionId: data.collection_id ?? null,
-      databaseId: data.database_id,
-      canWrite: data.can_write ?? false,
-    };
+    if (isLeafRow(item)) {
+      const { data } = item;
+      return {
+        key: item.id,
+        model: item.model,
+        section,
+        entityId: data.id,
+        sourceCollectionId: data.collection_id ?? null,
+        databaseId: data.database_id,
+        canWrite: data.can_write ?? false,
+      };
+    }
+    throw new Error(`Cannot derive a selected item from row ${item.id}`);
   });
 }

@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
@@ -93,14 +94,10 @@ function LibraryPageContent() {
     clearSelection();
   }, [isSearching, clearSelection]);
 
-  // The library collection for the active section — the Move picker's default
-  // focus when an item's own source collection isn't known.
-  const moveDefaultCollectionId =
-    selectionSection === "data"
-      ? tableCollection?.id
-      : selectionSection === "metrics"
-        ? metricCollection?.id
-        : undefined;
+  const moveDefaultCollectionId = match(selectionSection)
+    .with("data", () => tableCollection?.id)
+    .with("metrics", () => metricCollection?.id)
+    .otherwise(() => undefined);
 
   const handleActionComplete = useCallback(
     (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {

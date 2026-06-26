@@ -39,11 +39,6 @@ type LibraryBulkActionsProps = {
   onClear: () => void;
 };
 
-/**
- * Floating bulk-action bar for the Library. Move is universal (all sections;
- * the destination picker is scoped to the selection's section); Unpublish shows
- * only when every selected item is a table.
- */
 export function LibraryBulkActions({
   selectedItems,
   selectionSection,
@@ -94,7 +89,6 @@ export function LibraryBulkActions({
     }
   };
 
-  // UnpublishTablesModal handles the request, dependency warnings, and toast.
   const handleUnpublished = () => {
     const section = selectionSection;
     setAction(undefined);
@@ -146,10 +140,6 @@ type MovePickerItem = {
   effective_location?: string | null;
 };
 
-/**
- * True when a collection picker item can't be a move destination because it is,
- * or is a descendant of, one of the collections being moved (would create a cycle).
- */
 export function isMoveDestinationDisabled(
   item: MovePickerItem,
   movingCollectionIds: string[],

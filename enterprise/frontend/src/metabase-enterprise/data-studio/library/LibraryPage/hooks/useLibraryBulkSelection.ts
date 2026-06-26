@@ -32,17 +32,6 @@ export type UseLibraryBulkSelectionResult = {
   clear: () => void;
 };
 
-/**
- * Page-local selection model for Library bulk actions. Tables, metrics,
- * snippets, and sub-collections are selectable; section-root rows toggle "select
- * all in this section"; selection is constrained to one section at a time.
- *
- * Selection is updated through functional `setSelected` updaters so the handler
- * stays referentially stable and always operates on the latest selection (a
- * memoized TreeTable row may keep calling an older handler reference). The
- * handler must NOT call `event.preventDefault()`: on a controlled checkbox that
- * cancels the toggle and leaves `checked` one render behind.
- */
 export function useLibraryBulkSelection(
   rows: Row<TreeItem>[],
 ): UseLibraryBulkSelectionResult {

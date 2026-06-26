@@ -3,16 +3,6 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import type { SelectionState } from "metabase/ui";
 import type { CollectionId, DatabaseId } from "metabase-types/api";
 
-/**
- * Pure selection logic for Library bulk actions. The Library tree mixes three
- * sections (data / metrics / snippets); every content item is selectable —
- * tables, metrics, snippets, and sub-collections (moved as a unit) — but
- * library collections are typed per section, so a selection is constrained to a
- * single section: selecting in a different section replaces the prior
- * selection. Section-root rows (Data / Metrics / SQL snippets) act as a
- * "select all in this section" toggle. Kept React-free for direct unit tests.
- */
-
 export type LibrarySection = "data" | "metrics" | "snippets";
 
 export type SelectableModel = "table" | "metric" | "snippet" | "collection";
@@ -58,7 +48,6 @@ export function getSelectedKeySet(selected: TreeItem[]): Set<string> {
   return new Set(selected.map(keyOf));
 }
 
-/** The library section a row belongs to, or null for non-section rows. */
 export function getItemSection(item: TreeItem): LibrarySection | null {
   switch (item.model) {
     case "table":
@@ -85,7 +74,6 @@ export function getItemSection(item: TreeItem): LibrarySection | null {
   }
 }
 
-/** A top-level section row (Data / Metrics / SQL snippets) — not itself movable. */
 export function isSectionRoot(item: TreeItem): boolean {
   if (item.model !== "collection") {
     return false;
@@ -97,7 +85,6 @@ export function isSectionRoot(item: TreeItem): boolean {
   );
 }
 
-/** Tables, metrics, snippets, and sub-collections are selectable. */
 export function isSelectableItem(item: TreeItem): boolean {
   if (getItemSection(item) === null) {
     return false;
@@ -108,12 +95,10 @@ export function isSelectableItem(item: TreeItem): boolean {
   return true;
 }
 
-/** Direct selectable children of a section root (no recursion into folders). */
 export function getSectionDirectSelectables(sectionRoot: TreeItem): TreeItem[] {
   return (sectionRoot.children ?? []).filter(isSelectableItem);
 }
 
-/** The section all selected items share (selection is single-section). */
 export function getSelectionSection(
   selected: TreeItem[],
 ): LibrarySection | null {
@@ -181,10 +166,6 @@ export function toggleSectionRoot(
   return unionByKey(selected, selectables);
 }
 
-/**
- * Shift-range select: add the selectable items in [from..to] that share the
- * clicked item's section, switching section if the current selection differs.
- */
 export function selectItemRange(
   selected: TreeItem[],
   visibleItems: TreeItem[],
@@ -209,14 +190,12 @@ export function selectItemRange(
   return unionByKey(selected, rangeItems);
 }
 
-/** True when the selection is non-empty and every item is a table. */
 export function isAllTables(selected: TreeItem[]): boolean {
   return (
     selected.length > 0 && selected.every((item) => item.model === "table")
   );
 }
 
-/** Reduce selected tree items to the payload the Move/Unpublish actions need. */
 export function deriveSelectedItems(selected: TreeItem[]): SelectedItem[] {
   return selected.map((item) => {
     const section = getItemSection(item) as LibrarySection;

@@ -1,9 +1,5 @@
 import { isMoveDestinationDisabled } from "./LibraryBulkActions";
 
-// The bar's Move/Unpublish flows, item count, Clear, default picker focus, and
-// Unpublish visibility are all covered by the library e2e suite. The only thing
-// unit-tested here is the move-destination cycle guard, whose descendant edge
-// case the e2e doesn't exercise.
 describe("isMoveDestinationDisabled", () => {
   const moving = ["5"]; // collection 5 is being moved
 

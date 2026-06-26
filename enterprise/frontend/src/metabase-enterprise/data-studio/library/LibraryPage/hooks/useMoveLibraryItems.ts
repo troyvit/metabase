@@ -17,14 +17,6 @@ export type MoveLibraryItemsResult = {
   affectedCollectionIds: CollectionId[];
 };
 
-/**
- * Move a heterogeneous set of selected Library items to one destination
- * collection, dispatching the right mutation per model (table → collection_id,
- * metric/card → collection_id, snippet → collection_id, collection → parent_id).
- * Moves run concurrently; failures are counted, not thrown. Invalidates the
- * affected collections' item lists so the top-level tree refetches (lazy-loaded
- * subtrees are refreshed by the caller via the section refresh fns).
- */
 export function useMoveLibraryItems() {
   const [updateTable] = useUpdateTableMutation();
   const [updateCard] = useUpdateCardMutation();
@@ -86,7 +78,6 @@ export function useMoveLibraryItems() {
   );
 }
 
-/** Source collections of the moved items plus the destination, de-duplicated. */
 export function getAffectedCollectionIds(
   items: SelectedItem[],
   destinationId: CollectionId | null,

@@ -582,9 +582,8 @@ describe("scenarios > data studio > library", () => {
         cy.button("Unpublish these tables").click();
       });
 
-      // Gate on positive signals so the checks don't pass against the transient
-      // loading state: the bar clears only after the unpublish resolves, and
-      // Folder A is back once the Data section has re-rendered.
+      // Gate on positive signals (bar cleared, Folder A re-rendered) so the
+      // checks don't pass against the transient post-unpublish loading state.
       bulkBar().should("not.exist");
       H.DataStudio.Library.collectionItem("Folder A").should("be.visible");
       H.DataStudio.Library.libraryPage()

@@ -509,6 +509,14 @@ describe("scenarios > data studio > library", () => {
       );
       H.DataStudio.Library.visit();
 
+      cy.log("Section-root checkbox selects every item in the section");
+      H.DataStudio.Library.selectRow("Data");
+      H.DataStudio.Library.rowCheckbox("Orders").should("be.checked");
+      H.DataStudio.Library.rowCheckbox("Reviews").should("be.checked");
+      H.DataStudio.Library.rowCheckbox("Folder A").should("be.checked");
+      bulkBar().findByRole("button", { name: "Clear" }).click();
+      bulkBar().should("not.exist");
+
       cy.log("Selection is limited to one section, replacing across sections");
       H.DataStudio.Library.selectRow("Orders");
       bulkBar().findByText("1 item selected").should("be.visible");

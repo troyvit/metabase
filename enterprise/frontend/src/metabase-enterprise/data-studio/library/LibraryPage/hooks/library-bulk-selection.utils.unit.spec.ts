@@ -12,6 +12,7 @@ import {
   getRowSelectionState,
   getSectionDirectSelectables,
   getSelectedKeySet,
+  getSelectionSection,
   isAllTables,
   isSectionRoot,
   isSelectableItem,
@@ -300,6 +301,14 @@ describe("library-bulk-selection.utils", () => {
         "table:1",
         "collection:5",
       ]);
+    });
+  });
+
+  describe("getSelectionSection", () => {
+    it("returns the shared section of the selection, or null when empty", () => {
+      expect(getSelectionSection([])).toBeNull();
+      expect(getSelectionSection([tableItem(1)])).toBe("data");
+      expect(getSelectionSection([metricItem(1)])).toBe("metrics");
     });
   });
 });

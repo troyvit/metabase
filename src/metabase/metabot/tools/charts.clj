@@ -96,11 +96,11 @@
       {:output            (format-chart-output structured)
        :structured-output structured
        :data-parts [(streaming/viz-part
-                      {:entity-id (or (:chart_id new-chart-data) chart_id)
-                       :query-id  (or (:query_id new-chart-data) (str (random-uuid)))
-                       :query     (links/->legacy-mbql query)
-                       :display   new-viz
-                       :title     title})]})
+                     {:entity-id (or (:chart_id new-chart-data) chart_id)
+                      :query-id  (or (:query_id new-chart-data) (str (random-uuid)))
+                      :query     (links/->legacy-mbql query)
+                      :display   new-viz
+                      :title     title})]})
     (catch Exception e
       (log/error e "Error editing chart")
       (if (:agent-error? (ex-data e))

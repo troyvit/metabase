@@ -12,7 +12,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]

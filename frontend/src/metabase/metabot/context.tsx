@@ -12,6 +12,7 @@ import {
 } from "react";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
@@ -169,7 +170,7 @@ export const MetabotProvider = ({
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
       capabilities: _.compact([
-        "frontend:inline_viz_v1",
+        !isEmbeddingSdk() && "frontend:inline_viz_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
         isAdmin && "permission:write_transforms",

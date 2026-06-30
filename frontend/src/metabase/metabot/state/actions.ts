@@ -1,4 +1,5 @@
-import { isRejected, nanoid } from "@reduxjs/toolkit";
+import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
+import { push } from "react-router-redux";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -448,12 +449,22 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
-                if (isEmbeddingSdk() && part.data.type === "card") {
-                  dispatch(
-                    setNavigateToPath(getGeneratedEntityPath(part.data)),
-                  );
+                if (agentId === "ask") {
+                  pushDataPart({ type: "data_part", part });
+                  return;
                 }
-                pushDataPart({ type: "data_part", part });
+
+                const path = getGeneratedEntityPath(part.data);
+
+                if (isEmbeddingSdk()) {
+                  if (part.data.type === "card") {
+                    dispatch(setNavigateToPath(path));
+                  }
+                  pushDataPart({ type: "data_part", part });
+                  return;
+                }
+
+                dispatch(push(path) as UnknownAction);
               })
               .with({ type: "data-adhoc_viz" }, (part) => {
                 pushDataPart({ type: "data_part", part });

@@ -1,5 +1,4 @@
-import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
+import { isRejected, nanoid } from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -449,28 +448,12 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
-                const value = part.data;
-                const inlineCapable = request.context.capabilities.includes(
-                  "frontend:inline_viz_v1",
-                );
-
-                if (inlineCapable) {
-                  pushDataPart({ type: "data_part", part });
-                  return;
+                if (isEmbeddingSdk() && part.data.type === "card") {
+                  dispatch(
+                    setNavigateToPath(getGeneratedEntityPath(part.data)),
+                  );
                 }
-
-                const path = getGeneratedEntityPath(value);
-
-                if (isEmbeddingSdk()) {
-                  if (value.type === "card") {
-                    dispatch(setNavigateToPath(path));
-                  }
-                  pushDataPart({ type: "data_part", part });
-                  return;
-                }
-
-                // Sidebar (in-app): navigate the user to the generated entity.
-                dispatch(push(path) as UnknownAction);
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-adhoc_viz" }, (part) => {
                 pushDataPart({ type: "data_part", part });

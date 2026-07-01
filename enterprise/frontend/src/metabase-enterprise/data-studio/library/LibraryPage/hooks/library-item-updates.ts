@@ -1,5 +1,7 @@
-import { collectionApi } from "metabase/api";
-import type { Dispatch } from "metabase/redux/store";
+import { match } from "ts-pattern";
+
+import type { ArchivableItem } from "metabase/archive/hooks";
+import type { MovableItem } from "metabase/common/hooks";
 import type { CollectionId } from "metabase-types/api";
 
 import type { SelectedItem } from "./library-bulk-selection.utils";
@@ -9,27 +11,57 @@ export type LibraryItemUpdateResult = {
   affectedCollectionIds: CollectionId[];
 };
 
-// Applies `applyToItem` to each selected item concurrently, counting (not
-// throwing) failures, then refreshes the affected collections' item lists.
+// Snippet-section folders map to `snippet-collection`; all others to `collection`.
+export function selectedItemToMovable(item: SelectedItem): MovableItem {
+  const { entityId: id } = item;
+  return match(item)
+    .with({ model: "table" }, () => ({ model: "table", id }) as const)
+    .with({ model: "metric" }, () => ({ model: "metric", id }) as const)
+    .with({ model: "snippet" }, () => ({ model: "snippet", id }) as const)
+    .with(
+      { model: "collection", section: "snippets" },
+      () => ({ model: "snippet-collection", id }) as const,
+    )
+    .with({ model: "collection" }, () => ({ model: "collection", id }) as const)
+    .exhaustive();
+}
+
+export function selectedItemToArchivable(item: SelectedItem): ArchivableItem {
+  const { entityId: id, canWrite } = item;
+  return match(item)
+    .with(
+      { model: "metric" },
+      () => ({ model: "metric", id, can_write: canWrite }) as const,
+    )
+    .with(
+      { model: "snippet" },
+      () => ({ model: "snippet", id, can_write: canWrite }) as const,
+    )
+    .with(
+      { model: "collection", section: "snippets" },
+      () => ({ model: "snippet-collection", id, can_write: canWrite }) as const,
+    )
+    .with(
+      { model: "collection" },
+      () => ({ model: "collection", id, can_write: canWrite }) as const,
+    )
+    .with({ model: "table" }, () => {
+      throw new Error("Tables are unpublished, not moved to the trash");
+    })
+    .exhaustive();
+}
+
+// Returns the touched collections so the caller can refresh subcollections held
+// in local state; RTK tags already refresh the subscribed section-root lists.
 export async function runLibraryItemUpdates(
   items: SelectedItem[],
   applyToItem: (item: SelectedItem) => Promise<unknown>,
   destinationId: CollectionId | null,
-  dispatch: Dispatch,
 ): Promise<LibraryItemUpdateResult> {
   const results = await Promise.allSettled(items.map(applyToItem));
-  const affectedCollectionIds = getAffectedCollectionIds(items, destinationId);
-  dispatch(
-    collectionApi.util.invalidateTags(
-      affectedCollectionIds.map((id) => ({
-        type: "collection" as const,
-        id: `${id}-items`,
-      })),
-    ),
-  );
   return {
     failedCount: results.filter((r) => r.status === "rejected").length,
-    affectedCollectionIds,
+    affectedCollectionIds: getAffectedCollectionIds(items, destinationId),
   };
 }
 

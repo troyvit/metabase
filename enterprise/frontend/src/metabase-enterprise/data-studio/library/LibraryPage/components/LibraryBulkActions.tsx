@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { useSetArchive } from "metabase/archive/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -10,7 +11,7 @@ import {
   CollectionPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { useConfirmation } from "metabase/common/hooks";
+import { useConfirmation, useSetCollection } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
@@ -19,9 +20,12 @@ import type {
   LibrarySection,
   SelectedItem,
 } from "../hooks/library-bulk-selection.utils";
-import { getAffectedCollectionIds } from "../hooks/library-item-updates";
-import { useMoveLibraryItems } from "../hooks/useMoveLibraryItems";
-import { useTrashLibraryItems } from "../hooks/useTrashLibraryItems";
+import {
+  getAffectedCollectionIds,
+  runLibraryItemUpdates,
+  selectedItemToArchivable,
+  selectedItemToMovable,
+} from "../hooks/library-item-updates";
 import { getArchiveLibraryCollectionsMessage } from "../utils";
 
 type BulkAction = "move" | "unpublish";
@@ -47,8 +51,8 @@ export function LibraryBulkActions({
   onClear,
 }: LibraryBulkActionsProps) {
   const [action, setAction] = useState<BulkAction>();
-  const moveItems = useMoveLibraryItems();
-  const trashItems = useTrashLibraryItems();
+  const setCollection = useSetCollection();
+  const setArchive = useSetArchive();
   const { show: showConfirm, modalContent: confirmModal } = useConfirmation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -77,10 +81,17 @@ export function LibraryBulkActions({
       return;
     }
     try {
-      const { failedCount, affectedCollectionIds } = await moveItems(
-        selectedItems,
-        destinationId,
-      );
+      const { failedCount, affectedCollectionIds } =
+        await runLibraryItemUpdates(
+          selectedItems,
+          (item) =>
+            setCollection(
+              selectedItemToMovable(item),
+              { id: destinationId ?? "root" },
+              { notify: false },
+            ),
+          destinationId,
+        );
       if (failedCount > 0) {
         sendErrorToast(t`Couldn't move ${failedCount} of ${count} items`);
       } else {
@@ -105,8 +116,12 @@ export function LibraryBulkActions({
     if (section == null) {
       return;
     }
-    const { failedCount, affectedCollectionIds } =
-      await trashItems(selectedItems);
+    const { failedCount, affectedCollectionIds } = await runLibraryItemUpdates(
+      selectedItems,
+      async (item) =>
+        setArchive(selectedItemToArchivable(item), true, { notify: false }),
+      null,
+    );
     if (failedCount > 0) {
       sendErrorToast(
         t`Couldn't move ${failedCount} of ${count} items to trash`,

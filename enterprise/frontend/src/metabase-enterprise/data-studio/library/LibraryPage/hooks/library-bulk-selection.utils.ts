@@ -184,6 +184,7 @@ export function isAllTables(selected: TreeItem[]): boolean {
   );
 }
 
+// convert selected tree item to selected item types
 export function deriveSelectedItems(selected: TreeItem[]): SelectedItem[] {
   return selected.map((item): SelectedItem => {
     const section = getItemSection(item) as LibrarySection;

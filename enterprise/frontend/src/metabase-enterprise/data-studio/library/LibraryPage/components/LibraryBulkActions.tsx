@@ -186,15 +186,8 @@ export function LibraryBulkActions({
   );
 }
 
-type MovePickerItem = {
-  id: string | number;
-  model: string;
-  location?: string | null;
-  effective_location?: string | null;
-};
-
 export function isMoveDestinationDisabled(
-  item: MovePickerItem,
+  item: OmniPickerItem,
   movingCollectionIds: string[],
 ): boolean {
   if (item.model !== "collection" || movingCollectionIds.length === 0) {
@@ -234,11 +227,7 @@ function LibraryMoveModal({
         title={t`Move to…`}
         value={undefined}
         onChange={(destination) =>
-          onMove(
-            destination.id === "root"
-              ? null
-              : (destination.id as RegularCollectionId),
-          )
+          onMove(destination.id === "root" ? null : destination.id)
         }
         onClose={onClose}
         namespaces={["snippets"]}
@@ -264,7 +253,7 @@ function LibraryMoveModal({
           ? { id: initialCollectionId, model: "collection" }
           : undefined
       }
-      onChange={(destination) => onMove(destination.id as RegularCollectionId)}
+      onChange={(destination) => onMove(destination.id)}
       onClose={onClose}
       isDisabledItem={isDisabledItem}
       options={{

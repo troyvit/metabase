@@ -14,37 +14,41 @@ export type LibraryItemUpdateResult = {
 // Snippet-section folders map to `snippet-collection`; all others to `collection`.
 export function selectedItemToMovable(item: SelectedItem): MovableItem {
   const { entityId: id } = item;
-  return match(item)
-    .with({ model: "table" }, () => ({ model: "table", id }) as const)
-    .with({ model: "metric" }, () => ({ model: "metric", id }) as const)
-    .with({ model: "snippet" }, () => ({ model: "snippet", id }) as const)
-    .with(
-      { model: "collection", section: "snippets" },
-      () => ({ model: "snippet-collection", id }) as const,
-    )
-    .with({ model: "collection" }, () => ({ model: "collection", id }) as const)
+  return match<SelectedItem, MovableItem>(item)
+    .with({ model: "table" }, () => ({ model: "table", id }))
+    .with({ model: "metric" }, () => ({ model: "metric", id }))
+    .with({ model: "snippet" }, () => ({ model: "snippet", id }))
+    .with({ model: "collection", section: "snippets" }, () => ({
+      model: "snippet-collection",
+      id,
+    }))
+    .with({ model: "collection" }, () => ({ model: "collection", id }))
     .exhaustive();
 }
 
 export function selectedItemToArchivable(item: SelectedItem): ArchivableItem {
   const { entityId: id, canWrite } = item;
-  return match(item)
-    .with(
-      { model: "metric" },
-      () => ({ model: "metric", id, can_write: canWrite }) as const,
-    )
-    .with(
-      { model: "snippet" },
-      () => ({ model: "snippet", id, can_write: canWrite }) as const,
-    )
-    .with(
-      { model: "collection", section: "snippets" },
-      () => ({ model: "snippet-collection", id, can_write: canWrite }) as const,
-    )
-    .with(
-      { model: "collection" },
-      () => ({ model: "collection", id, can_write: canWrite }) as const,
-    )
+  return match<SelectedItem, ArchivableItem>(item)
+    .with({ model: "metric" }, () => ({
+      model: "metric",
+      id,
+      can_write: canWrite,
+    }))
+    .with({ model: "snippet" }, () => ({
+      model: "snippet",
+      id,
+      can_write: canWrite,
+    }))
+    .with({ model: "collection", section: "snippets" }, () => ({
+      model: "snippet-collection",
+      id,
+      can_write: canWrite,
+    }))
+    .with({ model: "collection" }, () => ({
+      model: "collection",
+      id,
+      can_write: canWrite,
+    }))
     .with({ model: "table" }, () => {
       throw new Error("Tables are unpublished, not moved to the trash");
     })

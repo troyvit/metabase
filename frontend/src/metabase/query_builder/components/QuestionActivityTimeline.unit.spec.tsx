@@ -8,41 +8,21 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
+import type Question from "metabase-lib/v1/Question";
+import { createMockUserListResult } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 
-const REVISIONS = [
-  {
-    is_reversion: true,
-    description: "bar",
-    timestamp: "2016-05-08T02:02:07.441Z",
-    user: {
-      common_name: "Bar",
-    },
-  },
-  {
-    is_creation: true,
-    description: "foo",
-    timestamp: "2016-04-08T02:02:07.441Z",
-    user: {
-      common_name: "Foo",
-    },
-  },
-];
+interface SetupOpts {
+  question: Question;
+}
 
-async function setup({ question }) {
+async function setup({ question }: SetupOpts) {
   setupRevisionsEndpoints([
     createMockRevision(),
     createMockRevision({ id: 2 }),
   ]);
-  setupUsersEndpoints([createMockUserInfo()]);
-  renderWithProviders(
-    <QuestionActivityTimeline
-      question={question}
-      revisions={REVISIONS}
-      currentUser={createMockUser()}
-    />,
-  );
+  setupUsersEndpoints([createMockUserListResult()]);
+  renderWithProviders(<QuestionActivityTimeline question={question} />);
   await waitForLoaderToBeRemoved();
 }
 
@@ -52,7 +32,7 @@ describe("QuestionActivityTimeline", () => {
       canWrite: () => false,
       getModerationReviews: () => [],
       id: () => 1,
-    };
+    } as unknown as Question;
 
     it("should not render revert action buttons", async () => {
       await setup({ question });
@@ -65,7 +45,7 @@ describe("QuestionActivityTimeline", () => {
       canWrite: () => true,
       getModerationReviews: () => [],
       id: () => 1,
-    };
+    } as unknown as Question;
 
     it("should render revert action buttons", async () => {
       await setup({ question });

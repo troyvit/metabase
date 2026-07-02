@@ -1,11 +1,17 @@
 import { render, screen } from "__support__/ui";
+import type Question from "metabase-lib/v1/Question";
+import type { Field } from "metabase-types/api";
 
 import { DatasetMetadataStrengthIndicator } from "./DatasetMetadataStrengthIndicator";
 
-function setup({ resultMetadata } = {}) {
+interface SetupOpts {
+  resultMetadata?: Partial<Field>[];
+}
+
+function setup({ resultMetadata }: SetupOpts = {}) {
   const mockDataset = {
     getResultMetadata: () => resultMetadata,
-  };
+  } as unknown as Question;
   render(
     <DatasetMetadataStrengthIndicator
       dataset={mockDataset}

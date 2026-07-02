@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Component } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -9,10 +9,20 @@ import {
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
+  Card,
+  Filter,
+  Join,
+  JoinCondition,
+  StructuredDatasetQuery,
+  UnsavedCard,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -38,7 +48,7 @@ const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
 const MULTI_SCHEMA_TABLE2_ID = 101;
 
-const BASE_GUI_QUESTION = {
+const BASE_GUI_QUESTION: UnsavedCard = {
   display: "table",
   visualization_settings: {},
   dataset_query: {
@@ -50,7 +60,7 @@ const BASE_GUI_QUESTION = {
   },
 };
 
-const BASE_NATIVE_QUESTION = {
+const BASE_NATIVE_QUESTION: UnsavedCard = {
   display: "table",
   visualization_settings: {},
   dataset_query: {
@@ -62,32 +72,32 @@ const BASE_NATIVE_QUESTION = {
   },
 };
 
-const SAVED_QUESTION = {
+const SAVED_QUESTION: Partial<Card> = {
   id: 1,
   name: "Q1",
   description: null,
   collection_id: null,
 };
 
-const ORDERS_QUERY = {
+const ORDERS_QUERY: StructuredDatasetQuery = {
   type: "query",
   database: SAMPLE_DB_ID,
   query: { "source-table": ORDERS_ID },
 };
 
-const PRODUCTS_QUERY = {
+const PRODUCTS_QUERY: StructuredDatasetQuery = {
   type: "query",
   database: SAMPLE_DB_ID,
   query: { "source-table": PRODUCTS_ID },
 };
 
-const PEOPLE_QUERY = {
+const PEOPLE_QUERY: StructuredDatasetQuery = {
   type: "query",
   database: SAMPLE_DB_ID,
   query: { "source-table": PEOPLE_ID },
 };
 
-const QUERY_IN_MULTI_SCHEMA_DB = {
+const QUERY_IN_MULTI_SCHEMA_DB: StructuredDatasetQuery = {
   type: "query",
   database: MULTI_SCHEMA_DB_ID,
   query: {
@@ -97,31 +107,31 @@ const QUERY_IN_MULTI_SCHEMA_DB = {
 
 // Joins
 
-const ORDERS_PRODUCT_JOIN_CONDITION = [
+const ORDERS_PRODUCT_JOIN_CONDITION: JoinCondition = [
   "=",
   ["field", ORDERS.PRODUCT_ID, null],
   ["field", PRODUCTS.ID, { "join-alias": "Products" }],
 ];
 
-const ORDERS_PEOPLE_JOIN_CONDITION = [
+const ORDERS_PEOPLE_JOIN_CONDITION: JoinCondition = [
   "=",
   ["field", ORDERS.USER_ID, null],
   ["field", PEOPLE.ID, { "join-alias": "People" }],
 ];
 
-const PRODUCTS_JOIN = {
+const PRODUCTS_JOIN: Join = {
   alias: "Products",
   condition: ORDERS_PRODUCT_JOIN_CONDITION,
   "source-table": PRODUCTS_ID,
 };
 
-const PEOPLE_JOIN = {
+const PEOPLE_JOIN: Join = {
   alias: "People",
   condition: ORDERS_PEOPLE_JOIN_CONDITION,
   "source-table": PEOPLE_ID,
 };
 
-const QUERY_WITH_PRODUCTS_JOIN = {
+const QUERY_WITH_PRODUCTS_JOIN: StructuredDatasetQuery = {
   type: "query",
   database: SAMPLE_DB_ID,
   query: {
@@ -130,7 +140,7 @@ const QUERY_WITH_PRODUCTS_JOIN = {
   },
 };
 
-const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = {
+const QUERY_WITH_PRODUCTS_PEOPLE_JOIN: StructuredDatasetQuery = {
   type: "query",
   database: SAMPLE_DB_ID,
   query: {
@@ -142,9 +152,13 @@ const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = {
 // Filters
 
 const RANDOM_ORDER_ID = 155;
-const ORDERS_PK_FILTER = ["=", ["field", ORDERS.ID, null], RANDOM_ORDER_ID];
+const ORDERS_PK_FILTER: Filter = [
+  "=",
+  ["field", ORDERS.ID, null],
+  RANDOM_ORDER_ID,
+];
 
-const ORDER_DETAIL_QUERY = {
+const ORDER_DETAIL_QUERY: StructuredDatasetQuery = {
   type: "query",
   database: SAMPLE_DB_ID,
   query: {
@@ -189,11 +203,11 @@ function getMetadata() {
   });
 }
 
-function getQuestion(card, metadata) {
+function getQuestion(card: Card | UnsavedCard, metadata?: Metadata) {
   return new Question(card, metadata);
 }
 
-function getAdHocQuestion(overrides) {
+function getAdHocQuestion(overrides?: Partial<Card>) {
   return getQuestion({ ...BASE_GUI_QUESTION, ...overrides });
 }
 
@@ -209,8 +223,13 @@ function getAdHocPeopleQuestion() {
   return getAdHocQuestion({ dataset_query: PEOPLE_QUERY });
 }
 
-class ErrorBoundary extends Component {
-  componentDidCatch(...args) {
+interface ErrorBoundaryProps {
+  onError: () => void;
+  children: ReactNode;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps> {
+  componentDidCatch(...args: unknown[]) {
     console.error(...args);
     this.props.onError();
   }
@@ -221,13 +240,21 @@ class ErrorBoundary extends Component {
 }
 const SOURCE_CARD = createMockCard({ id: SOURCE_QUESTION_ID });
 
+interface SetupOpts {
+  card?: Card | UnsavedCard;
+  originalCard?: Card | UnsavedCard;
+  subHead?: boolean;
+  isObjectDetail?: boolean;
+  hasPermissions?: boolean;
+}
+
 function setup({
   card,
   originalCard,
   subHead = false,
   isObjectDetail = false,
   hasPermissions = true,
-} = {}) {
+}: SetupOpts = {}) {
   const metadata = hasPermissions ? getMetadata() : createMockMetadata({});
   const question = card && new Question(card, metadata);
   const originalQuestion = originalCard && new Question(originalCard, metadata);
@@ -243,8 +270,8 @@ function setup({
   renderWithProviders(
     <ErrorBoundary onError={onError}>
       <QuestionDataSource
-        question={question}
-        originalQuestion={originalQuestion}
+        question={question as Question}
+        originalQuestion={originalQuestion || undefined}
         subHead={subHead}
         isObjectDetail={isObjectDetail}
       />
@@ -254,16 +281,21 @@ function setup({
 }
 
 jest.mock("metabase/common/components/Link", () => ({
-  Link: ({ to: href, ...props }) => <a href={href} {...props} />,
+  Link: ({
+    to: href,
+    ...props
+  }: { to: string } & ComponentPropsWithoutRef<"a">) => (
+    <a href={href} {...props} />
+  ),
 }));
 
-function getQuestionFromUrl(relativeUrl) {
+function getQuestionFromUrl(relativeUrl: string) {
   const url = new URL(relativeUrl, document.location.href);
   const card = deserializeCardFromUrl(url.hash);
   return new Question(card, getMetadata());
 }
 
-function areQuestionUrlsEquivalent(url1, url2) {
+function areQuestionUrlsEquivalent(url1: string, url2: string) {
   return Lib.areLegacyQueriesEqual(
     getQuestionFromUrl(url1).datasetQuery(),
     getQuestionFromUrl(url2).datasetQuery(),
@@ -361,14 +393,13 @@ describe("QuestionDataSource", () => {
 
       describe(questionType, () => {
         it("displays database name", async () => {
-          const { question } = setup({ card });
-          const node = await screen.findByText(
-            question.database().displayName(),
-          );
+          const question = checkNotNull(setup({ card }).question);
+          const database = checkNotNull(question.database());
+          const node = await screen.findByText(database.displayName());
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseDatabase(question.database()),
+            Urls.browseDatabase(database),
           );
         });
 
@@ -388,38 +419,48 @@ describe("QuestionDataSource", () => {
 
       describe(questionType, () => {
         it("displays table name", async () => {
-          const { question } = setup({ card });
-          const table = question
-            .metadata()
-            .table(Lib.sourceTableOrCardId(question.query()));
+          const question = checkNotNull(setup({ card }).question);
+          const table = checkNotNull(
+            question
+              .metadata()
+              .table(Lib.sourceTableOrCardId(question.query())),
+          );
           const node = await screen.findByText(new RegExp(table.displayName()));
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).not.toBeInTheDocument();
         });
 
         it("displays table link in subhead variant", async () => {
-          const { question } = setup({ card, subHead: true });
-          const table = question
-            .metadata()
-            .table(Lib.sourceTableOrCardId(question.query()));
+          const question = checkNotNull(
+            setup({ card, subHead: true }).question,
+          );
+          const table = checkNotNull(
+            question
+              .metadata()
+              .table(Lib.sourceTableOrCardId(question.query())),
+          );
           const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
             areQuestionUrlsEquivalent(
-              node.closest("a").href,
+              node.closest("a")!.href,
               Urls.question(table.newQuestion()),
             ),
           ).toBe(true);
         });
 
         it("displays table link in object detail view", async () => {
-          const { question } = setup({ card, isObjectDetail: true });
-          const table = question
-            .metadata()
-            .table(Lib.sourceTableOrCardId(question.query()));
+          const question = checkNotNull(
+            setup({ card, isObjectDetail: true }).question,
+          );
+          const table = checkNotNull(
+            question
+              .metadata()
+              .table(Lib.sourceTableOrCardId(question.query())),
+          );
           const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
             areQuestionUrlsEquivalent(
-              node.closest("a").href,
+              node.closest("a")!.href,
               Urls.question(table.newQuestion()),
             ),
           ).toBe(true);
@@ -437,11 +478,13 @@ describe("QuestionDataSource", () => {
 
       describe(questionType, () => {
         it("displays schema name", async () => {
-          const { question } = setup({ card });
-          const table = question
-            .metadata()
-            .table(Lib.sourceTableOrCardId(question.query()));
-          const node = await screen.findByText(table.schema_name);
+          const question = checkNotNull(setup({ card }).question);
+          const table = checkNotNull(
+            question
+              .metadata()
+              .table(Lib.sourceTableOrCardId(question.query())),
+          );
+          const node = await screen.findByText(checkNotNull(table.schema_name));
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
@@ -469,14 +512,14 @@ describe("QuestionDataSource", () => {
           expect(orders).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
-              orders.closest("a").href,
+              orders.closest("a")!.href,
               Urls.question(getAdHocOrdersQuestion()),
             ),
           ).toBe(true);
           expect(products).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
-              products.closest("a").href,
+              products.closest("a")!.href,
               Urls.question(getAdHocProductsQuestion()),
             ),
           ).toBe(true);
@@ -501,21 +544,21 @@ describe("QuestionDataSource", () => {
           expect(orders).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
-              orders.closest("a").href,
+              orders.closest("a")!.href,
               Urls.question(getAdHocOrdersQuestion()),
             ),
           ).toBe(true);
           expect(products).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
-              products.closest("a").href,
+              products.closest("a")!.href,
               Urls.question(getAdHocProductsQuestion()),
             ),
           ).toBe(true);
           expect(people).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
-              people.closest("a").href,
+              people.closest("a")!.href,
               Urls.question(getAdHocPeopleQuestion()),
             ),
           ).toBe(true);
@@ -618,9 +661,11 @@ describe("QuestionDataSource", () => {
     const newMetadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, newMetadata);
     const newQuery = Lib.queryFromTableOrCardMetadata(
       newMetadataProvider,
-      Lib.tableOrCardMetadata(
-        newMetadataProvider,
-        getQuestionVirtualTableId(originalQuestion.id()),
+      checkNotNull(
+        Lib.tableOrCardMetadata(
+          newMetadataProvider,
+          getQuestionVirtualTableId(originalQuestion.id()),
+        ),
       ),
     );
     const newQuestion = Question.create().setQuery(newQuery);

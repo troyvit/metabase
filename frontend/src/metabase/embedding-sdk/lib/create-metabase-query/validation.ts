@@ -86,6 +86,27 @@ function validateTableScopedInputs(input: TableQueryInput) {
       "Table query breakouts",
     );
   });
+
+  input.orderBys?.forEach((orderBy) => {
+    if (isAggregationResultReference(input.aggregations, orderBy)) {
+      return;
+    }
+
+    if (
+      isGroupedQuery(input) &&
+      !isBreakoutReference(input.breakouts, orderBy)
+    ) {
+      throw new Error(
+        "Table query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
+      );
+    }
+
+    validateGeneratedTableId(
+      getTableId(orderBy),
+      tableId,
+      "Table query orderBys",
+    );
+  });
 }
 
 function validateGeneratedTableId(
@@ -107,6 +128,7 @@ function validateMetricScopedInputs(input: MetricQueryInput) {
 
   input.filters?.forEach((filter) => {
     if (isTableScopedReference(filter)) {
+      validateSourceCardMetricReference(input, filter, "Metric query filters");
       validateGeneratedTableIdInSet(
         getTableId(filter),
         allowedTableIds,
@@ -128,6 +150,11 @@ function validateMetricScopedInputs(input: MetricQueryInput) {
     }
 
     if (isTableScopedReference(aggregation)) {
+      validateSourceCardMetricReference(
+        input,
+        aggregation,
+        "Metric query aggregations",
+      );
       validateGeneratedTableIdInSet(
         getTableId(aggregation),
         allowedTableIds,
@@ -145,6 +172,23 @@ function validateMetricScopedInputs(input: MetricQueryInput) {
 
   input.breakouts?.forEach((breakout) => {
     validateMetricDimension(input, breakout, "Metric query breakouts");
+  });
+
+  input.orderBys?.forEach((orderBy) => {
+    if (isAggregationResultReference(input.aggregations, orderBy)) {
+      return;
+    }
+
+    if (
+      isGroupedQuery(input) &&
+      !isBreakoutReference(input.breakouts, orderBy)
+    ) {
+      throw new Error(
+        "Metric query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
+      );
+    }
+
+    validateMetricDimension(input, orderBy, "Metric query orderBys");
   });
 }
 
@@ -194,6 +238,64 @@ function isCountAggregation(value: unknown) {
   );
 }
 
+function isGroupedQuery(input: QueryInput) {
+  return Boolean(input.aggregations?.length || input.breakouts?.length);
+}
+
+function isAggregationResultReference(
+  aggregations: QueryInput["aggregations"] | undefined,
+  value: unknown,
+) {
+  if (
+    !isObject(value) ||
+    value.type !== "column" ||
+    typeof value.name !== "string"
+  ) {
+    return false;
+  }
+
+  return getAggregationResultColumnNames(aggregations).includes(value.name);
+}
+
+function getAggregationResultColumnNames(
+  aggregations: QueryInput["aggregations"] | undefined,
+) {
+  return (aggregations ?? []).flatMap((aggregation) => {
+    if (isCountAggregation(aggregation)) {
+      return ["count"];
+    }
+
+    const columns = getColumns(aggregation);
+
+    if (!columns) {
+      return [];
+    }
+
+    return columns.flatMap((column) =>
+      isObject(column) && typeof column.name === "string" ? [column.name] : [],
+    );
+  });
+}
+
+function getColumns(value: unknown) {
+  if (!isObject(value) || !("columns" in value)) {
+    return null;
+  }
+
+  return Array.isArray(value.columns) ? value.columns : null;
+}
+
+function isBreakoutReference(
+  breakouts: QueryInput["breakouts"] | undefined,
+  value: unknown,
+) {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return (breakouts ?? []).some((breakout) => fieldsMatch(breakout, value));
+}
+
 function getTableId(value: unknown): number | undefined {
   if (!isTableScopedReference(value) || typeof value.tableId !== "number") {
     return undefined;
@@ -231,10 +333,26 @@ function validateMetricDimension(
     throw new Error(`${context} must use generated metric dimensions.`);
   }
 
+  validateSourceCardMetricReference(input, value, context);
+
   validateGeneratedTableIdInSet(
     getTableId(value),
     getMetricAllowedTableIds(input.source),
     context,
+  );
+}
+
+function validateSourceCardMetricReference(
+  input: MetricQueryInput,
+  value: unknown,
+  context: string,
+) {
+  if (input.source.sourceCardId == null || getTableId(value) == null) {
+    return;
+  }
+
+  throw new Error(
+    `${context} for source-card Metrics must use generated source-card Metric dimensions, not mapped table dimensions.`,
   );
 }
 

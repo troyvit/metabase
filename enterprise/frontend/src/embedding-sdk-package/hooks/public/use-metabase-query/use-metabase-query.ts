@@ -13,6 +13,7 @@ import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question"
 
 import type {
   MetricSchema,
+  SchemaColumn,
   SchemaJavaScriptType,
   TableSchema,
 } from "../data-schema";
@@ -32,6 +33,7 @@ import type {
   MetabaseQueryOptions,
   MetricQuery,
   NumericAggregationDimension,
+  OrderByDirection,
   OrderableAggregationDimension,
   TableQuery,
   UnaryFilterOperatorForDimension,
@@ -48,7 +50,9 @@ export type {
   FieldAggregationSchema,
   MetabaseBreakout,
   MetabaseDimensionFilter,
+  MetabaseOrderBy,
   MetabaseQueryOptions,
+  OrderByDirection,
   UseMetabaseQueryResult,
 } from "./types";
 
@@ -241,6 +245,76 @@ export function breakout<TDimension>(
     unit: options && "unit" in options ? options.unit : undefined,
     ...getBinningOptions(options),
   };
+}
+
+export function orderBy<
+  TAggregation extends { columns?: readonly SchemaColumn[] },
+>(
+  aggregation: TAggregation,
+  direction?: OrderByDirection,
+): SchemaColumn & { type: "column"; direction?: OrderByDirection };
+export function orderBy<TDimension>(
+  dimension: TDimension,
+  direction?: OrderByDirection,
+): TDimension & { direction?: OrderByDirection };
+
+export function orderBy<TDimension>(
+  dimension: TDimension,
+  direction: OrderByDirection | undefined,
+  options: BreakoutOptionsArgument<TDimension>,
+): TDimension & {
+  direction?: OrderByDirection;
+} & BreakoutOptionsArgument<TDimension>;
+
+export function orderBy<TDimension>(
+  dimension: TDimension,
+  direction?: OrderByDirection,
+  options?: BreakoutOptionsArgument<TDimension>,
+) {
+  const aggregationColumn = getAggregationResultColumn(dimension);
+
+  if (aggregationColumn) {
+    return {
+      type: "column",
+      name: aggregationColumn.name,
+      ...(direction ? { direction } : undefined),
+    };
+  }
+
+  const { displayName: _displayName, ...orderableDimension } = dimension as {
+    displayName?: unknown;
+  } & object;
+
+  return {
+    ...orderableDimension,
+    ...(direction ? { direction } : undefined),
+    unit: options && "unit" in options ? options.unit : undefined,
+    ...getBinningOptions(options),
+  };
+}
+
+function getAggregationResultColumn(value: unknown): SchemaColumn | undefined {
+  if (value == null || typeof value !== "object") {
+    return undefined;
+  }
+
+  const columns = (value as { columns?: unknown }).columns;
+
+  if (!Array.isArray(columns)) {
+    return undefined;
+  }
+
+  const [column] = columns;
+
+  if (
+    column == null ||
+    typeof column !== "object" ||
+    typeof (column as { name?: unknown }).name !== "string"
+  ) {
+    return undefined;
+  }
+
+  return column as SchemaColumn;
 }
 
 function getBinningOptions(

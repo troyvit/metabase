@@ -341,6 +341,29 @@ type MetricBreakout<TMetric> =
   | MetricDimensionReference<TMetric>
   | MetabaseBreakoutObjectForDimension<MetricDimensionReference<TMetric>>;
 
+export type OrderByDirection = "asc" | "desc";
+
+type MetabaseOrderByObjectForDimension<TDimension> =
+  MetabaseBreakoutObjectForDimension<TDimension> & {
+    direction?: OrderByDirection;
+  };
+
+export type MetabaseOrderBy<TTable = unknown> =
+  | (FieldReference<TTable> & { direction?: OrderByDirection })
+  | MetabaseOrderByObjectForDimension<FieldReference<TTable>>
+  | AggregationResultOrderBy;
+
+type MetricOrderBy<TMetric> =
+  | (MetricDimensionReference<TMetric> & { direction?: OrderByDirection })
+  | MetabaseOrderByObjectForDimension<MetricDimensionReference<TMetric>>
+  | AggregationResultOrderBy;
+
+type AggregationResultOrderBy = {
+  type: "column";
+  name: string;
+  direction?: OrderByDirection;
+};
+
 type BinningOptionsInput =
   | { bins?: number | "auto"; binWidth?: never }
   | { binWidth?: number | "auto"; bins?: never };
@@ -357,6 +380,7 @@ type TableQueryBase<TTable> = {
     | SegmentReference<TTable>
     | MetabaseDimensionFilterForDimension<FieldReference<TTable>>
   )[];
+  orderBys?: readonly MetabaseOrderBy<TTable>[];
   limit?: number;
   enabled?: boolean;
 } & (
@@ -382,6 +406,7 @@ export type MetricQuery<TMetric> = {
   )[];
   aggregations?: readonly MetricAggregation<TMetric>[];
   breakouts?: readonly MetricBreakout<TMetric>[];
+  orderBys?: readonly MetricOrderBy<TMetric>[];
   limit?: number;
   enabled?: boolean;
 };

@@ -1,0 +1,101 @@
+import fs from "node:fs";
+import path from "node:path";
+
+import { buildConnectSrcCsp, readAllowedHosts } from "./dev-connect-src";
+
+jest.mock("node:fs");
+
+const mockedFs = jest.mocked(fs);
+
+const APP_ROOT = "/app";
+const YAML_PATH = path.join(APP_ROOT, "data_app.yaml");
+const YML_PATH = path.join(APP_ROOT, "data_app.yml");
+
+describe("readAllowedHosts", () => {
+  const setup = (files: Record<string, string>) => {
+    mockedFs.existsSync.mockImplementation((p) => p.toString() in files);
+    mockedFs.readFileSync.mockImplementation((p) => {
+      const content = files[p.toString()];
+
+      if (content == null) {
+        throw new Error(`unexpected read: ${p}`);
+      }
+
+      return content;
+    });
+
+    return { hosts: readAllowedHosts(APP_ROOT) };
+  };
+
+  afterEach(() => jest.resetAllMocks());
+
+  it("returns [] when no manifest exists", () => {
+    expect(setup({}).hosts).toEqual([]);
+  });
+
+  it("reads allowed_hosts from data_app.yaml", () => {
+    const { hosts } = setup({
+      [YAML_PATH]:
+        "allowed_hosts:\n  - https://api.example.com\n  - https://*.acme.com\n",
+    });
+    expect(hosts).toEqual(["https://api.example.com", "https://*.acme.com"]);
+  });
+
+  it("falls back to data_app.yml when there is no .yaml", () => {
+    const { hosts } = setup({
+      [YML_PATH]: "allowed_hosts:\n  - https://api.example.com\n",
+    });
+    expect(hosts).toEqual(["https://api.example.com"]);
+  });
+
+  it("prefers data_app.yaml over data_app.yml when both exist", () => {
+    const { hosts } = setup({
+      [YAML_PATH]: "allowed_hosts:\n  - https://from-yaml.com\n",
+      [YML_PATH]: "allowed_hosts:\n  - https://from-yml.com\n",
+    });
+    expect(hosts).toEqual(["https://from-yaml.com"]);
+  });
+
+  it("returns [] on malformed YAML", () => {
+    expect(setup({ [YAML_PATH]: "allowed_hosts: [unclosed" }).hosts).toEqual(
+      [],
+    );
+  });
+
+  it("returns [] when allowed_hosts is not a list", () => {
+    expect(setup({ [YAML_PATH]: "allowed_hosts: nope\n" }).hosts).toEqual([]);
+  });
+
+  it("filters out non-string entries", () => {
+    const { hosts } = setup({
+      [YAML_PATH]: "allowed_hosts:\n  - https://ok.com\n  - 42\n  - true\n",
+    });
+    expect(hosts).toEqual(["https://ok.com"]);
+  });
+});
+
+describe("buildConnectSrcCsp", () => {
+  function setup(allowedHosts: string[], metabaseUrl: string | undefined) {
+    return { csp: buildConnectSrcCsp(allowedHosts, metabaseUrl) };
+  }
+
+  it("always includes 'self' and the localhost dev/HMR websockets", () => {
+    expect(setup([], undefined).csp).toBe(
+      "connect-src 'self' ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*",
+    );
+  });
+
+  it("includes the Metabase instance origin (normalized) and the allowed hosts", () => {
+    expect(
+      setup(["https://api.example.com"], "https://mb.example.com/subpath/").csp,
+    ).toBe(
+      "connect-src 'self' ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* https://mb.example.com https://api.example.com",
+    );
+  });
+
+  it("omits the instance origin when the Metabase URL is invalid", () => {
+    expect(setup(["https://api.example.com"], "not a url").csp).toBe(
+      "connect-src 'self' ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* https://api.example.com",
+    );
+  });
+});

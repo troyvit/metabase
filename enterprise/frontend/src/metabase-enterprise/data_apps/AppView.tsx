@@ -81,19 +81,23 @@ export function AppView({ params }: AppViewProps) {
     if (!iframeEl || !validName) {
       return undefined;
     }
+
     let detach: (() => void) | null = null;
 
     const onLoad = () => {
       setIframeLoaded(true);
       const win = iframeEl.contentWindow;
+
       if (!win) {
         return;
       }
+
       detach?.();
       detach = attachIframeUrlMirror(win, name);
     };
 
     iframeEl.addEventListener("load", onLoad);
+
     // If the iframe already loaded before the effect ran, attach now.
     if (iframeEl.contentWindow?.document.readyState === "complete") {
       onLoad();
@@ -127,7 +131,9 @@ export function AppView({ params }: AppViewProps) {
         });
       }
     };
+
     window.addEventListener("message", onMessage);
+
     return () => window.removeEventListener("message", onMessage);
   }, [iframeEl]);
 

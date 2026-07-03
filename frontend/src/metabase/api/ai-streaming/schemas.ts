@@ -21,6 +21,7 @@ export const knownDataPartTypes = [
   "code_edit",
   "transform_suggestion",
   "generated_entity",
+  "entity_saved",
   "adhoc_viz",
   "static_viz",
 ];
@@ -52,6 +53,19 @@ export type GeneratedCard = {
 
 export type GeneratedEntity = GeneratedCard;
 
+export type SavedEntityLocation = {
+  type: "collection" | "dashboard";
+  id: number | null;
+  name: string;
+  url: string;
+};
+
+export type EntitySavedValue = {
+  entity_id: string;
+  card_id: number;
+  location: SavedEntityLocation;
+};
+
 export type KnownDataPart =
   | { type: "navigate_to"; version: 1; value: string }
   | { type: "state"; version: 1; value: Record<string, any> }
@@ -59,6 +73,7 @@ export type KnownDataPart =
   | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }
   | { type: "code_edit"; version: 1; value: MetabotCodeEdit }
   | { type: "generated_entity"; version: 1; value: GeneratedEntity }
+  | { type: "entity_saved"; version: 1; value: EntitySavedValue }
   | { type: "adhoc_viz"; version: 1; value: AdhocVizValue }
   | { type: "static_viz"; version: 1; value: StaticVizValue };
 

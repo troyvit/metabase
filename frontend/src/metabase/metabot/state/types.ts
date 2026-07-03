@@ -1,4 +1,7 @@
-import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
+import type {
+  KnownDataPart,
+  SavedEntityLocation,
+} from "metabase/api/ai-streaming/schemas";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
@@ -8,7 +11,10 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-export type MetabotDataPart = Exclude<KnownDataPart, { type: "state" }>;
+export type MetabotDataPart = Exclude<
+  KnownDataPart,
+  { type: "state" } | { type: "entity_saved" }
+>;
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
@@ -135,6 +141,9 @@ export interface MetabotState {
   reactions: MetabotReactionsState;
   debugMode: boolean;
   savedChartCardIds: Record<string, number>;
+  /** Maps a generated chart entity id to where the agent saved it (collection or
+   * dashboard), so the inline chart can show a "Saved in <name>" link. Session-only. */
+  savedChartLocations: Record<string, SavedEntityLocation>;
 }
 
 export interface SlashCommand {

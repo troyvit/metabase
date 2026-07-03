@@ -456,6 +456,18 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: { editorTransform, suggestionId },
                 });
               })
+              .with({ type: "entity_saved" }, (part) => {
+                // Annotates a previously-shown inline chart with its saved
+                // location; it updates the chart in place rather than adding a
+                // new message, so it is not pushed as a data part.
+                dispatch(
+                  markChartSaved({
+                    entityId: part.value.entity_id,
+                    cardId: part.value.card_id,
+                    location: part.value.location,
+                  }),
+                );
+              })
               .with(
                 { type: "generated_entity" },
                 { type: "adhoc_viz" },

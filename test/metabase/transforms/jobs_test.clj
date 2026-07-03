@@ -127,7 +127,7 @@
 
 (def ^:private query-source {:type "query"})
 
-(deftest run-transform-feature-flag-test
+(deftest run-transform-no-features-test
   (testing "Query transforms run without any features"
     (mt/with-premium-features #{}
       (let [query-transform {:id 3
@@ -148,7 +148,9 @@
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")
           (is @run-called?
-              "Should call run-mbql-transform! when feature is enabled")))))
+              "Should call run-mbql-transform! when feature is enabled"))))))
+
+(deftest run-transform-skipped-without-basic-feature-test
   (testing "Query transforms are skipped when hosted without :transforms-basic feature"
     (mt/with-premium-features #{:hosting}
       (let [query-transform {:id 1
@@ -168,7 +170,9 @@
               "Should log at warn level")
           (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
                           (:message (first @logged-messages)))
-              "Warning message should indicate transform was skipped due to missing features")))))
+              "Warning message should indicate transform was skipped due to missing features"))))))
+
+(deftest run-transform-with-basic-feature-test
   (testing "Query transforms run with :transforms-basic feature"
     (mt/with-premium-features #{:hosting :transforms-basic}
       (let [query-transform {:id 3

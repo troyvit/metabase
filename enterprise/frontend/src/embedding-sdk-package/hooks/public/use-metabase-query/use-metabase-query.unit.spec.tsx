@@ -14,10 +14,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 import * as DataApp from "../../../data-app";
 
-import type {
-  MetabaseQueryOptions,
-  UseMetabaseQueryObjectResult,
-} from "./use-metabase-query";
+import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from ".";
 import {
   avg,
   breakout,
@@ -27,7 +24,7 @@ import {
   sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
-} from "./use-metabase-query";
+} from ".";
 
 jest.mock("embedding-sdk-shared/hooks/use-lazy-selector", () => ({
   useLazySelector: jest.fn(() => ({ status: "success" })),

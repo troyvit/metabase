@@ -101,7 +101,7 @@ podman run -d -p 3000:3000 \
    --name metabase metabase/metabase
 ```
 
-Keep in mind that Metabase will be connecting from _within_ your Podman container, so make sure that either: a) you're using a fully qualified hostname, or b) that you've set a proper entry in your container's `/etc/hosts file`.
+Keep in mind that Metabase will be connecting from _within_ your Podman container. If your Postgres database is running on the same machine you can replace `my-database-host` with `host.containers.internal`. Otherwise make sure to use a fully qualified hostname for your database.
 
 ## Migrating to a production installation
 
@@ -115,12 +115,44 @@ If you've already been running Metabase with the default application database (H
 - [Troubleshooting](#troubleshooting)
 - [Continue to setup](#continue-to-setup)
 
-### Running Metabase as a service
+### Running Metabase as a user-level service
 
-We can use the [systemd](https://systemd.io/) initialization service to register a Metabase service that can be started and stopped automatically. Before executing this process, ensure that the Metabase container is operational. Then, use Podman's built-in feature to generate the service file as follows:
+One of Podman's advantages is that you can run its containers as a user through systemd instead of as root. We can use Podman's [Quadlet tool](https://github.com/containers/quadlet) to register a Metabase service that can be started and stopped automatically. Before executing this process, ensure that the Metabase container is operational. Then, create a new file called `metabase.container` in `.config/containers/systemd/`. Add the following to the file:
 
 ```
-sudo podman generate systemd --new --name metabase > metabase.service
+# metabase.container
+[Unit]
+Description=Metabase container
+[Container]
+ContainerName=metabase
+Environment=MB_DB_TYPE=postgres MB_DB_DBNAME=metabase MB_DB_PORT=5432 MB_DB_USER=name MB_DB_PASS=password MB_DB_HOST=my-database-host
+Image=docker.io/metabase/metabase:latest
+PublishPort=3000:3000
+[Install]
+WantedBy=default.target
+```
+
+Replace the `MB_DB` variables with your Postgres login information and ports. As with the Podman command above, you can replace `my-database-host` with `host.containers.internal` if Postgres is on your localhost and not in a container.
+
+Save the container file. If you need, create a new folder for your user-level service files:
+
+```
+mkdir -p ~/.config/systemd/user
+```
+
+and then run:
+
+```
+/usr/libexec/podman/quadlet -user -v ~/.config/systemd/user
+```
+
+Quadlet will generate a new systemd service file with all the relevant information from your container file.
+
+Next, tell systemd about the new service and then start that service:
+
+```
+systemctl --user daemon-reload
+systemctl --user start metabase.service
 ```
 
 Before executing the service, inspect the contents of the `metabase.service` file to verify that all the accurate configurations are present. Once confirmed, locate the service file to the appropriate location by running the command:

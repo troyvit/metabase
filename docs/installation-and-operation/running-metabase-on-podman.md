@@ -98,7 +98,7 @@ podman run -d -p 3000:3000 \
   -e "MB_DB_USER=name" \
   -e "MB_DB_PASS=password" \
   -e "MB_DB_HOST=my-database-host" \
-   --name metabase metabase/metabase
+   --name metabase docker.io/metabase/metabase
 ```
 
 Keep in mind that Metabase will be connecting from _within_ your Podman container. If your Postgres database is running on the same machine you can replace `my-database-host` with `host.containers.internal`. Otherwise make sure to use a fully qualified hostname for your database.
@@ -157,17 +157,6 @@ systemctl --user daemon-reload
 systemctl --user start metabase.service
 ```
 
-Before executing the service, inspect the contents of the `metabase.service` file to verify that all the accurate configurations are present. Once confirmed, locate the service file to the appropriate location by running the command:
-
-```
-sudo mv metabase.service /etc/systemd/system
-```
-
-To enable the automatic initiation of the Metabase service during system boot, execute:
-
-```
-sudo systemctl enable metabase
-```
 
 To verify that the system functions correctly, reboot the system. Upon completion of the system initialization process, the Metabase container should be operational as intended.
 

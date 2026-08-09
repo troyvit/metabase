@@ -148,7 +148,9 @@ and then run:
 
 Quadlet will generate a new systemd service file with all the relevant information from your container file.
 
-Next, tell systemd about the new service and then start that service:
+Inspect the contents of the `~/.config/systemd/user/metabase.service` file to verify that all the accurate configurations are present and that there are no surprises. For instance, it pays to make sure your database password doesn't contain a % sign which might trigger a [existing systemd unit specifier](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_systemd_unit_files_to_customize_and_optimize_your_system/assembly_working-with-systemd-unit-files_working-with-systemd#important-unit-specifiers_assembly_working-with-systemd-unit-files)
+
+If all looks well, tell systemd about the new service and then start that service:
 
 ```
 systemctl --user daemon-reload

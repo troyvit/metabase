@@ -22,7 +22,7 @@ Then start the Metabase container:
 podman run -d -p 3000:3000 --name=metabase docker.io/metabase/metabase:latest
 ```
 
-This will launch an Metabase server on port 3000 by default.
+This will launch an Metabase server on port 3000.
 
 Optional: to view the logs as your Open Source Metabase initializes, run:
 
@@ -80,7 +80,7 @@ Once you've provisioned a database, like Postgres, for Metabase to use to store 
 
 ### Running Podman in production
 
-Let's say you set up a Postgres database by running:
+Let's say you set up a Postgres database for Metabase by running:
 
 ```
 createdb metabaseappdb
@@ -109,7 +109,7 @@ If you've already been running Metabase with the default application database (H
 
 ## Additional Podman maintenance and configuration
 
-- [Running Metabase as a service](#running-metabase-as-a-service)
+- [Running Metabase as a user-level service](#running-metabase-as-a-user-level-service)
 - [Customizing the Metabase Jetty server](#customizing-the-metabase-jetty-server)
 - [Setting the Java Timezone](#setting-the-java-timezone)
 - [Troubleshooting](#troubleshooting)
@@ -117,7 +117,13 @@ If you've already been running Metabase with the default application database (H
 
 ### Running Metabase as a user-level service
 
-One of Podman's advantages is that you can run its containers as a user through systemd instead of as root. We can use Podman's [Quadlet tool](https://github.com/containers/quadlet) to register a Metabase service that can be started and stopped automatically. Before executing this process, ensure that the Metabase container is operational. Then, create a new file called `metabase.container` in `.config/containers/systemd/`. Add the following to the file:
+One of Podman's advantages is that you can run Metabase as a user through systemd instead of as root. Before executing this process: 
+
+* Ensure that the Metabase container is operational.
+* Choose or create the user you will use to run Metabase.
+* Run `loginctl enable-linger [user]` where `[user]` is the user that will own your Metabase process. Doing so will ensure that Metabase continues to run after you have logged out of that user's session.
+
+Create a new file called `metabase.container` in `.config/containers/systemd/`. Add the following to the file:
 
 ```
 # metabase.container
@@ -132,31 +138,41 @@ PublishPort=3000:3000
 WantedBy=default.target
 ```
 
-Replace the `MB_DB` variables with your Postgres login information and ports. As with the Podman command above, you can replace `my-database-host` with `host.containers.internal` if Postgres is on your localhost and not in a container.
+Replace the `MB_DB` variables with your Postgres login information and ports. As with the Podman command above, you can replace `my-database-host` with `host.containers.internal` if Postgres is on your localhost and not in a container. Make sure you pick a port that is available to your user.
 
-Save the container file. If you need, create a new folder for your user-level service files:
+Save this unit file.
 
-```
-mkdir -p ~/.config/systemd/user
-```
+Next, inform systemd about the new unit file:
 
-and then run:
+`systemctl --user daemon-reload`
 
-```
-/usr/libexec/podman/quadlet -user -v ~/.config/systemd/user
-```
+This command will create a new service file that systemd will use. You can test that its creation went well by checking its status:
 
-Quadlet will generate a new systemd service file with all the relevant information from your container file.
+`systemctl --user status metabase.service`
 
-Inspect the contents of the `~/.config/systemd/user/metabase.service` file to verify that all the accurate configurations are present and that there are no surprises. For instance, it pays to make sure your database password doesn't contain a % sign which might trigger a [existing systemd unit specifier](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_systemd_unit_files_to_customize_and_optimize_your_system/assembly_working-with-systemd-unit-files_working-with-systemd#important-unit-specifiers_assembly_working-with-systemd-unit-files)
-
-If all looks well, tell systemd about the new service and then start that service:
+You should see something like:
 
 ```
-systemctl --user daemon-reload
-systemctl --user start metabase.service
+● metabase.service - Metabase container
+     Loaded: loaded (/home/user/.config/containers/systemd/metabase.container; enabled; preset: disabled)
+     Active: inactive (dead)
 ```
 
+If you don't see the service has loaded, you can use Podman's quadlet tool to help debug:
+
+`/usr/libexec/podman/quadlet -dryrun -user`
+
+That command will run through the process of creating the service file and help expose any issues.
+
+Otherwise you can inspect the contents of the service file at `~/.config/systemd/user/metabase.service`. Verify that all the accurate configuration details from your unit file are present and that there are no surprises. For instance, it pays to make sure your database password doesn't contain a % sign which might trigger a [existing systemd unit specifier](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_systemd_unit_files_to_customize_and_optimize_your_system/assembly_working-with-systemd-unit-files_working-with-systemd#important-unit-specifiers_assembly_working-with-systemd-unit-files).
+
+If all looks good, start the service:
+
+`systemctl --user start metabase.service`
+
+The service should start up and you should be able to visit `http://localhost:3000` and see a welcome screen. If that works, your last step is to ensure that Metabase will start automatically on reboot:
+
+`systemctl --user eanble metabase.service`
 
 To verify that the system functions correctly, reboot the system. Upon completion of the system initialization process, the Metabase container should be operational as intended.
 

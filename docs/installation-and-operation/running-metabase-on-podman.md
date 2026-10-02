@@ -121,6 +121,7 @@ One of Podman's advantages is that you can run Metabase as a user through system
 
 * Ensure that the Metabase container is operational.
 * Choose or create the user you will use to run Metabase.
+* Make sure that user has a systemd service file folder by running `mkdir -p ~/.config/containers/systemd/` as the user.
 * Run `loginctl enable-linger [user]` where `[user]` is the user that will own your Metabase process. Doing so will ensure that Metabase continues to run after you have logged out of that user's session.
 
 Create a new file called `metabase.container` in `.config/containers/systemd/`. Add the following to the file:
@@ -140,7 +141,7 @@ WantedBy=default.target
 
 Replace the `MB_DB` variables with your Postgres login information and ports. As with the Podman command above, you can replace `my-database-host` with `host.containers.internal` if Postgres is on your localhost and not in a container. Make sure you pick a port that is available to your user.
 
-Save this unit file.
+Save your unit file.
 
 Next, inform systemd about the new unit file:
 
@@ -162,7 +163,7 @@ If you don't see the service has loaded, you can use Podman's quadlet tool to he
 
 `/usr/libexec/podman/quadlet -dryrun -user`
 
-That command will run through the process of creating the service file and help expose any issues.
+That command will pretend to run through the process of creating the service file with some verbosity and help expose any issues.
 
 Otherwise you can inspect the contents of the service file at `~/.config/systemd/user/metabase.service`. Verify that all the accurate configuration details from your unit file are present and that there are no surprises. For instance, it pays to make sure your database password doesn't contain a % sign which might trigger a [existing systemd unit specifier](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_systemd_unit_files_to_customize_and_optimize_your_system/assembly_working-with-systemd-unit-files_working-with-systemd#important-unit-specifiers_assembly_working-with-systemd-unit-files).
 
